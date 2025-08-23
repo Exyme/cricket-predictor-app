@@ -131,7 +131,7 @@ def get_group(animal):
             return members
     return []
 
-def calculate_score(team, year_num, year_zod, host=False, form_rank=10):
+def calculate_score(team, year_num, year_zod, host=False, form_rank=10, is_underdog=False):
     if team not in teams_data:
         return None
     
@@ -187,14 +187,22 @@ def calculate_score(team, year_num, year_zod, host=False, form_rank=10):
     else:
         zod_score += 0.5  # neutral
     
-    # Zodiac history upgrade (increased for multiple wins)
+    # Amp exact zodiac in karmic years
+    karmic_years = [3, 7, 11, 22, 33]
+    if year_num in karmic_years:
+        if team_zod == year_zod:
+            zod_score += 2  # Extra amp for team exact
+        if country_zod == year_zod:
+            zod_score += 2  # Extra amp for country exact
+    
+    # Zodiac history upgrade (scaled inversely for underdogs)
     if year_zod in zodiac_history and team in zodiac_history[year_zod]:
-        zod_score += 3 * len([w for w in zodiac_history[year_zod] if w == team])  # Increased from 2, scaled by count
+        win_count = zodiac_history[year_zod].count(team)
+        zod_score += 3 / win_count if win_count > 1 else 3  # Scale down for multiples
     
     total_score = num_score + zod_score
     
     # Extra weight to numerology if karmic/master year (increased weight)
-    karmic_years = [3, 7, 11, 22, 33]
     if year_num in karmic_years:
         total_score += num_score * 1.0  # Increased from 0.5
     
@@ -205,12 +213,20 @@ def calculate_score(team, year_num, year_zod, host=False, form_rank=10):
     # Disqualify if double penalty unless history override
     if double_penalty and team_num != year_num:
         if team in history_overrides and year_num in history_overrides[team]:
-            total_score += 3 * len([h for h in history_overrides[team] if h == year_num])  # Increased from 2, scaled by count
+            win_count = history_overrides[team].count(year_num)
+            total_score += 3 / win_count if win_count > 1 else 3  # Scaled down for multiples
         else:
             total_score = -float('inf')
     
-    # Form boost (lower rank = higher boost, increased impact)
-    total_score += (21 - form_rank) / 5  # Increased from /10 for stronger tiebreaker
+    # Form boost (lower rank = higher boost, reduced in karmic years)
+    form_boost = (21 - form_rank) / 5
+    if year_num in karmic_years:
+        form_boost /= 2  # Reduced impact in karmic years
+    total_score += form_boost
+    
+    # Underdog boost if selected and karmic year
+    if is_underdog and year_num in karmic_years:
+        total_score += 2
     
     return total_score
 
@@ -232,6 +248,9 @@ for team in participants:
     default = default_rankings.get(team, 20)
     form_ranks[team] = st.slider(f"Form Rank for {team}", 1, 20, default)
 
+# Add underdog selection
+underdog_teams = st.multiselect("Select Underdog Teams for Karmic Boost (if karmic year)", participants)
+
 if st.button("Predict Winner"):
     year_num = get_numerology(year)
     year_zod = get_zodiac(year)
@@ -243,7 +262,8 @@ if st.button("Predict Winner"):
     hosts = [h.strip().lower() for h in host.split(",") if h.strip()]
     for team in participants:
         is_host = team.lower() in hosts
-        score = calculate_score(team, year_num, year_zod, host=is_host, form_rank=form_ranks[team])
+        is_underdog = team in underdog_teams
+        score = calculate_score(team, year_num, year_zod, host=is_host, form_rank=form_ranks[team], is_underdog=is_underdog)
         if score is not None:
             scores[team] = score
     
