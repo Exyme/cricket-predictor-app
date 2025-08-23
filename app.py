@@ -2,26 +2,6 @@ import streamlit as st
 import requests
 from bs4 import BeautifulSoup
 
-def get_numerology(year):
-    s = sum(int(d) for d in str(year))
-    while s > 9 and s not in [11, 22, 33]:
-        s = sum(int(d) for d in str(s))
-    return s
-
-def get_zodiac(year):
-    index = (year - 4) % 12  # Adjusted to make 1924 = Rat (index 0)
-    return zodiac_animals[index]
-
-def get_group(animal):
-    for group, members in zodiac_groups.items():
-        if animal in members:
-            return members
-    return []
-
-def calculate_score(team, year_num, year_zod, host=False, form_rank=10, is_underdog=False):
-    if team not in teams_data:
-        return None
-
 # Dictionary of teams with their test status year and country foundation year (expanded from conversation)
 teams_data = {
     "Afghanistan": {"test": 2018, "country": 1919},
@@ -205,6 +185,16 @@ def fetch_rankings(year, format_type):
         else:
             st.warning(f"No historical data for {year}; using defaults.")
             return {}
+
+def get_zodiac(year):
+    index = (year - 4) % 12  # Adjusted to make 1924 = Rat (index 0)
+    return zodiac_animals[index]
+
+def get_group(animal):
+    for group, members in zodiac_groups.items():
+        if animal in members:
+            return members
+    return []
 
 def calculate_score(team, year_num, year_zod, host=False, form_rank=10, is_underdog=False):
     if team not in teams_data:
