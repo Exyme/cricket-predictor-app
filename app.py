@@ -1,4 +1,6 @@
 import streamlit as st
+import requests
+from bs4 import BeautifulSoup
 
 # Dictionary of teams with their test status year and country foundation year (expanded from conversation)
 teams_data = {
@@ -114,6 +116,58 @@ default_rankings = {
     "West Indies": 10, "Zimbabwe": 12, "Ireland": 11, "Netherlands": 13,
     # Add more
 }
+
+# Function to fetch rankings (scrape for current, hardcoded historical)
+def fetch_rankings(year, format_type):
+    format_map = {"ODI": "odi", "T20": "t20i", "Test/WTC": "test"}
+    icc_format = format_map.get(format_type, "odi")
+    
+    if year >= 2025:  # Current or future: Scrape ICC
+        url = f"https://www.icc-cricket.com/rankings/team-rankings/mens/{icc_format}"
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            rankings = {}
+            table = soup.find('table', class_='table rankings-table')
+            if table:
+                rows = table.find_all('tr')[1:15]  # Top ~12
+                for row in rows:
+                    cols = row.find_all('td')
+                    if len(cols) >= 2:
+                        position = int(cols[0].text.strip())
+                        team = cols[1].text.strip()
+                        rankings[team] = position
+            return rankings
+        else:
+            st.warning("Could not fetch current rankings; using defaults.")
+            return {}
+    
+    else:  # Historical: Hardcoded dict from archives (expand as needed)
+        historical = {
+            2023: {  # Pre-ODI WC September 2023 (from sources)
+                "Pakistan": 1,
+                "India": 2,
+                "Australia": 3,
+                "South Africa": 4,
+                "England": 5,
+                "New Zealand": 6,
+                "Sri Lanka": 7,
+                "Bangladesh": 8,
+                "Afghanistan": 9,
+                "West Indies": 10,
+                "Zimbabwe": 11,
+                "Ireland": 12,
+                "Netherlands": 13,
+            },
+            # Add more years, e.g., 2022: {...}
+        }
+        hist_rank = historical.get(year, {})
+        if hist_rank:
+            return hist_rank
+        else:
+            st.warning(f"No historical data for {year}; using defaults.")
+            return {}
 
 def get_numerology(year):
     s = sum(int(d) for d in str(year))
@@ -241,12 +295,15 @@ participants_str = st.text_input("Participants (comma-separated, e.g., India,Aus
 
 participants = [p.strip() for p in participants_str.split(",") if p.strip()]
 
-# Add form rank inputs
-st.write("Adjust Form Ranks (1=best, 20=worst; defaults from 2025)")
+# Fetch rankings automatically
+rankings = fetch_rankings(year, format_type)
+
+# Add form rank inputs (auto-populate from fetched rankings)
+st.write("Adjust Form Ranks (1=best, 20=worst; auto-fetched where possible)")
 form_ranks = {}
 for team in participants:
-    default = default_rankings.get(team, 20)
-    form_ranks[team] = st.slider(f"Form Rank for {team}", 1, 20, default)
+    auto_rank = rankings.get(team, default_rankings.get(team, 20))
+    form_ranks[team] = st.slider(f"Form Rank for {team}", 1, 20, auto_rank)
 
 # Add underdog selection
 underdog_teams = st.multiselect("Select Underdog Teams for Karmic Boost (if karmic year)", participants)
