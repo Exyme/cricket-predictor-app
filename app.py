@@ -8,6 +8,10 @@ def get_numerology(year):
         s = sum(int(d) for d in str(s))
     return s
 
+def get_zodiac(year):
+    index = (year - 4) % 12  # Adjusted to make 1924 = Rat (index 0)
+    return zodiac_animals[index]
+
 # Dictionary of teams with their test status year and country foundation year (expanded from conversation)
 teams_data = {
     "Afghanistan": {"test": 2018, "country": 1919},
