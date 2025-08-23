@@ -187,16 +187,16 @@ def calculate_score(team, year_num, year_zod, host=False, form_rank=10):
     else:
         zod_score += 0.5  # neutral
     
-    # Zodiac history upgrade
+    # Zodiac history upgrade (increased for multiple wins)
     if year_zod in zodiac_history and team in zodiac_history[year_zod]:
-        zod_score += 2
+        zod_score += 2 * zodiac_history[year_zod].count(team)  # Boost more for repeats
     
     total_score = num_score + zod_score
     
-    # Extra weight to numerology if karmic/master year
+    # Extra weight to numerology if karmic/master year (increased weight)
     karmic_years = [3, 7, 11, 22, 33]
     if year_num in karmic_years:
-        total_score += num_score * 0.5
+        total_score += num_score * 1.0  # Increased from 0.5
     
     # Host boost if no double penalty
     if host and not double_penalty:
@@ -205,12 +205,12 @@ def calculate_score(team, year_num, year_zod, host=False, form_rank=10):
     # Disqualify if double penalty unless history override
     if double_penalty and team_num != year_num:
         if team in history_overrides and year_num in history_overrides[team]:
-            total_score += 2  # Override boost for history
+            total_score += 2 * history_overrides[year_num].count(year_num)  # Boost more for multiple history
         else:
             total_score = -float('inf')
     
-    # Form boost (lower rank = higher boost)
-    total_score += (21 - form_rank) / 10
+    # Form boost (lower rank = higher boost, increased impact)
+    total_score += (21 - form_rank) / 5  # Increased from /10 for stronger tiebreaker
     
     return total_score
 
@@ -248,8 +248,8 @@ if st.button("Predict Winner"):
             scores[team] = score
     
     if scores:
-        # Weak fit elimination: Filter out ranks >10 or -inf
-        filtered_scores = {team: score for team, score in scores.items() if score != -float('inf') and form_ranks[team] <= 10}
+        # Weak fit elimination: Filter out ranks >10 or -inf (tightened threshold for better alignment)
+        filtered_scores = {team: score for team, score in scores.items() if score != -float('inf') and form_ranks[team] <= 8}  # Tightened from 10
         if filtered_scores:
             predicted_winner = max(filtered_scores, key=filtered_scores.get)
             st.write(f"Predicted Winner: {predicted_winner}")
