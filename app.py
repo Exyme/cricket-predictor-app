@@ -163,7 +163,7 @@ def calculate_score(team, year_num, year_zod, host=False, form_rank=10):
     # Check double penalty
     double_penalty = team_num in enemy_nums.get(year_num, []) and country_num in enemy_nums.get(year_num, [])
     
-    # Zodiac score (team weighted more)
+    # Zodiac score (team weighted more, reduced for country exact)
     zod_score = 0
     if team_zod == year_zod:
         zod_score += 3
@@ -177,7 +177,7 @@ def calculate_score(team, year_num, year_zod, host=False, form_rank=10):
         zod_score += 1  # neutral
     
     if country_zod == year_zod:
-        zod_score += 1.5
+        zod_score += 1  # Reduced from 1.5
     if secret_friends.get(country_zod) == year_zod:
         zod_score += 1.5
     if country_zod in get_group(year_zod) and country_zod != year_zod:
@@ -189,7 +189,7 @@ def calculate_score(team, year_num, year_zod, host=False, form_rank=10):
     
     # Zodiac history upgrade (increased for multiple wins)
     if year_zod in zodiac_history and team in zodiac_history[year_zod]:
-        zod_score += 2 * zodiac_history[year_zod].count(team)  # Boost more for repeats
+        zod_score += 3 * len([w for w in zodiac_history[year_zod] if w == team])  # Increased from 2, scaled by count
     
     total_score = num_score + zod_score
     
@@ -205,7 +205,7 @@ def calculate_score(team, year_num, year_zod, host=False, form_rank=10):
     # Disqualify if double penalty unless history override
     if double_penalty and team_num != year_num:
         if team in history_overrides and year_num in history_overrides[team]:
-            total_score += 2 * history_overrides[year_num].count(year_num)  # Boost more for multiple history
+            total_score += 3 * len([h for h in history_overrides[team] if h == year_num])  # Increased from 2, scaled by count
         else:
             total_score = -float('inf')
     
@@ -249,7 +249,7 @@ if st.button("Predict Winner"):
     
     if scores:
         # Weak fit elimination: Filter out ranks >10 or -inf (tightened threshold for better alignment)
-        filtered_scores = {team: score for team, score in scores.items() if score != -float('inf') and form_ranks[team] <= 8}  # Tightened from 10
+        filtered_scores = {team: score for team, score in scores.items() if score != -float('inf') and form_ranks[team] <= 6}  # Tightened from 8
         if filtered_scores:
             predicted_winner = max(filtered_scores, key=filtered_scores.get)
             st.write(f"Predicted Winner: {predicted_winner}")
