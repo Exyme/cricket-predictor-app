@@ -1,5 +1,28 @@
 import streamlit as st
 
+# Dictionary of teams with their test status year and country foundation year (expanded from conversation)
+teams_data = {
+    "Afghanistan": {"test": 2018, "country": 1919},
+    "Australia": {"test": 1877, "country": 1901},
+    "Bangladesh": {"test": 2000, "country": 1971},
+    "Canada": {"test": None, "country": 1867},  # No Test status, use ODI/T20 founding approx 1968
+    "England": {"test": 1877, "country": 1707},
+    "India": {"test": 1932, "country": 1947},
+    "Ireland": {"test": 2018, "country": 1922},
+    "Namibia": {"test": None, "country": 1990},
+    "Nepal": {"test": None, "country": 1768},
+    "Netherlands": {"test": None, "country": 1815},
+    "New Zealand": {"test": 1930, "country": 1907},
+    "Oman": {"test": None, "country": 1650},
+    "Pakistan": {"test": 1952, "country": 1947},
+    "Scotland": {"test": None, "country": 1707},
+    "South Africa": {"test": 1889, "country": 1910},
+    "Sri Lanka": {"test": 1982, "country": 1948},
+    "United States": {"test": None, "country": 1776},
+    "West Indies": {"test": 1928, "country": 1958},
+    "Zimbabwe": {"test": 1992, "country": 1980},
+}
+
 # Updated friendly numbers based on conversation examples and Vedic compatibilities
 friendly = {
     1: [1, 3, 4, 5, 7, 9],
@@ -30,29 +53,6 @@ enemy_nums = {
     11: [4, 8, 9],
     22: [3, 9],
     33: [4, 7, 8],
-}
-
-# Dictionary of teams with their test status year and country foundation year (expanded from conversation)
-teams_data = {
-    "Afghanistan": {"test": 2018, "country": 1919},
-    "Australia": {"test": 1877, "country": 1901},
-    "Bangladesh": {"test": 2000, "country": 1971},
-    "Canada": {"test": None, "country": 1867},  # No Test status, use ODI/T20 founding approx 1968
-    "England": {"test": 1877, "country": 1707},
-    "India": {"test": 1932, "country": 1947},
-    "Ireland": {"test": 2018, "country": 1922},
-    "Namibia": {"test": None, "country": 1990},
-    "Nepal": {"test": None, "country": 1768},
-    "Netherlands": {"test": None, "country": 1815},
-    "New Zealand": {"test": 1930, "country": 1907},
-    "Oman": {"test": None, "country": 1650},
-    "Pakistan": {"test": 1952, "country": 1947},
-    "Scotland": {"test": None, "country": 1707},
-    "South Africa": {"test": 1889, "country": 1910},
-    "Sri Lanka": {"test": 1982, "country": 1948},
-    "United States": {"test": None, "country": 1776},
-    "West Indies": {"test": 1928, "country": 1958},
-    "Zimbabwe": {"test": 1992, "country": 1980},
 }
 
 # Chinese zodiac animals based on year % 12 (starting from Rat for 1924=0)
@@ -86,6 +86,35 @@ enemies = {
     "Snake": "Pig", "Pig": "Snake",
 }
 
+# Historical overrides for disqualification (energies where teams have won)
+history_overrides = {
+    "Australia": [1, 3, 5, 7, 9],  # Wins in these energies (e.g., 1987/2023 in 7)
+    "India": [3, 4],  # 1983/1992 in 3, 2011 in 4
+    "Sri Lanka": [7],  # 1996 in 7
+    "Pakistan": [3],  # 1992 in 3
+    "England": [3],  # 2019 in 3
+    "West Indies": [4, 8],  # 1975 in 4, 1979 in 8
+    # Add more as needed from patterns
+}
+
+# Zodiac history (teams with wins in that zodiac)
+zodiac_history = {
+    "Rabbit": ["Australia", "India", "West Indies"],  # From patterns
+    "Goat": ["Australia", "West Indies"],
+    "Pig": ["India", "Australia", "England"],
+    "Rat": ["Sri Lanka"],
+    "Monkey": ["Pakistan"],
+    # Expand as needed
+}
+
+# Approximate rankings (defaults from 2025; user can override)
+default_rankings = {
+    "Australia": 2, "India": 1, "England": 8, "Pakistan": 6, "South Africa": 5,
+    "Sri Lanka": 4, "New Zealand": 3, "Bangladesh": 9, "Afghanistan": 7,
+    "West Indies": 10, "Zimbabwe": 12, "Ireland": 11, "Netherlands": 13,
+    # Add more
+}
+
 def get_numerology(year):
     s = sum(int(d) for d in str(year))
     while s > 9 and s not in [11, 22, 33]:
@@ -102,7 +131,7 @@ def get_group(animal):
             return members
     return []
 
-def calculate_score(team, year_num, year_zod, host=False):
+def calculate_score(team, year_num, year_zod, host=False, form_rank=10):
     if team not in teams_data:
         return None
     
@@ -158,6 +187,10 @@ def calculate_score(team, year_num, year_zod, host=False):
     else:
         zod_score += 0.5  # neutral
     
+    # Zodiac history upgrade
+    if year_zod in zodiac_history and team in zodiac_history[year_zod]:
+        zod_score += 2
+    
     total_score = num_score + zod_score
     
     # Extra weight to numerology if karmic/master year
@@ -165,19 +198,25 @@ def calculate_score(team, year_num, year_zod, host=False):
     if year_num in karmic_years:
         total_score += num_score * 0.5
     
-    # Host boost if no double penalty and alignments support
+    # Host boost if no double penalty
     if host and not double_penalty:
         total_score += 2
     
-    # Disqualify if double penalty unless exact match or history (simplified as exact team_num match)
+    # Disqualify if double penalty unless history override
     if double_penalty and team_num != year_num:
-        total_score = -float('inf')
+        if team in history_overrides and year_num in history_overrides[team]:
+            total_score += 2  # Override boost for history
+        else:
+            total_score = -float('inf')
+    
+    # Form boost (lower rank = higher boost)
+    total_score += (21 - form_rank) / 10
     
     return total_score
 
-# Streamlit app (updated with refined dictionaries and more teams)
+# Streamlit app
 st.title("Cricket World Cup Winner Predictor")
-st.write("Based on Refined Vedic Numerology and Chinese Astrology Method from our conversation. This is for fun and interpretive purposes only. Master numbers are handled, compatibilities updated.")
+st.write("Based on Refined Vedic Numerology and Chinese Astrology Method. This is for fun and interpretive purposes only.")
 
 year = st.number_input("World Cup Year", min_value=1900, max_value=2100, value=2023)
 format_type = st.selectbox("Cricket Format", ["ODI", "T20", "Test/WTC"])
@@ -185,6 +224,13 @@ host = st.text_input("Host Team (optional, comma-separated if co-hosts)")
 participants_str = st.text_input("Participants (comma-separated, e.g., India,Australia,England)", value="Australia,England,South Africa,West Indies,New Zealand,India,Pakistan,Sri Lanka,Zimbabwe,Bangladesh,Ireland,Afghanistan")
 
 participants = [p.strip() for p in participants_str.split(",") if p.strip()]
+
+# Add form rank inputs
+st.write("Adjust Form Ranks (1=best, 20=worst; defaults from 2025)")
+form_ranks = {}
+for team in participants:
+    default = default_rankings.get(team, 20)
+    form_ranks[team] = st.slider(f"Form Rank for {team}", 1, 20, default)
 
 if st.button("Predict Winner"):
     year_num = get_numerology(year)
@@ -197,16 +243,25 @@ if st.button("Predict Winner"):
     hosts = [h.strip().lower() for h in host.split(",") if h.strip()]
     for team in participants:
         is_host = team.lower() in hosts
-        score = calculate_score(team, year_num, year_zod, host=is_host)
+        score = calculate_score(team, year_num, year_zod, host=is_host, form_rank=form_ranks[team])
         if score is not None:
             scores[team] = score
     
     if scores:
-        # To reflect tiebreakers, sort by score, but for simplicity, pick max (can add manual form input if needed)
-        predicted_winner = max(scores, key=scores.get)
-        st.write(f"Predicted Winner: {predicted_winner}")
-        st.write("Scores (higher is better; -inf disqualified):")
-        for team, score in sorted(scores.items(), key=lambda x: x[1], reverse=True):
-            st.write(f"{team}: {score}")
+        # Weak fit elimination: Filter out ranks >10 or -inf
+        filtered_scores = {team: score for team, score in scores.items() if score != -float('inf') and form_ranks[team] <= 10}
+        if filtered_scores:
+            predicted_winner = max(filtered_scores, key=filtered_scores.get)
+            st.write(f"Predicted Winner: {predicted_winner}")
+            st.write("Filtered Scores (higher is better; weak fits eliminated):")
+            for team, score in sorted(filtered_scores.items(), key=lambda x: x[1], reverse=True):
+                st.write(f"{team}: {score}")
+        else:
+            st.write("No strong contenders after filtering; fallback to all scores.")
+            predicted_winner = max(scores, key=scores.get)
+            st.write(f"Predicted Winner: {predicted_winner}")
+            st.write("All Scores:")
+            for team, score in sorted(scores.items(), key=lambda x: x[1], reverse=True):
+                st.write(f"{team}: {score}")
     else:
         st.write("No valid teams provided.")
