@@ -117,74 +117,21 @@ default_rankings = {
     # Add more
 }
 
-def fetch_rankings(year, format_type):
-    format_map = {"ODI": "odi", "T20": "t20i", "Test/WTC": "test"}
-    icc_format = format_map.get(format_type, "odi")
-    
-    if year >= 2025:  # Current or future: Scrape ICC
-        url = f"https://www.icc-cricket.com/rankings/team-rankings/mens/{icc_format}"
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        response = requests.get(url, headers=headers)
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.text, 'html.parser')
-            rankings = {}
-            table = soup.find('table', class_='table rankings-table')
-            if table:
-                rows = table.find_all('tr')[1:15]  # Top ~12
-                for row in rows:
-                    cols = row.find_all('td')
-                    if len(cols) >= 2:
-                        position = int(cols[0].text.strip())
-                        team = cols[1].text.strip()
-                        rankings[team] = position
-            return rankings
-        else:
-            st.warning("Could not fetch current rankings; using defaults.")
-            return {}
-    
-    else:  # Historical: Expanded dict for ODIs 1992-2025 (top 10 where available; approximated pre-2002)
-        historical = {
-            1992: {"West Indies": 1, "England": 2, "Australia": 3, "Pakistan": 4, "New Zealand": 5, "South Africa": 6, "India": 7, "Sri Lanka": 8, "Zimbabwe": 9},
-            1993: {"West Indies": 1, "Australia": 2, "England": 3, "Pakistan": 4, "New Zealand": 5, "South Africa": 6, "India": 7, "Sri Lanka": 8, "Zimbabwe": 9},
-            1994: {"Australia": 1, "West Indies": 2, "Pakistan": 3, "England": 4, "South Africa": 5, "New Zealand": 6, "India": 7, "Sri Lanka": 8, "Zimbabwe": 9},
-            1995: {"Australia": 1, "South Africa": 2, "West Indies": 3, "Pakistan": 4, "England": 5, "New Zealand": 6, "India": 7, "Sri Lanka": 8, "Zimbabwe": 9},
-            1996: {"South Africa": 1, "Australia": 2, "Pakistan": 3, "West Indies": 4, "India": 5, "England": 6, "Sri Lanka": 7, "New Zealand": 8, "Zimbabwe": 9},
-            1997: {"South Africa": 1, "Australia": 2, "Pakistan": 3, "England": 4, "India": 5, "West Indies": 6, "Sri Lanka": 7, "New Zealand": 8, "Zimbabwe": 9},
-            1998: {"South Africa": 1, "Australia": 2, "England": 3, "Pakistan": 4, "India": 5, "West Indies": 6, "Sri Lanka": 7, "New Zealand": 8, "Zimbabwe": 9},
-            1999: {"South Africa": 1, "Australia": 2, "Pakistan": 3, "England": 4, "India": 5, "West Indies": 6, "Sri Lanka": 7, "New Zealand": 8, "Zimbabwe": 9},
-            2000: {"Australia": 1, "South Africa": 2, "Pakistan": 3, "India": 4, "Sri Lanka": 5, "England": 6, "New Zealand": 7, "West Indies": 8, "Zimbabwe": 9},
-            2001: {"Australia": 1, "South Africa": 2, "Pakistan": 3, "Sri Lanka": 4, "India": 5, "England": 6, "New Zealand": 7, "West Indies": 8, "Zimbabwe": 9},
-            2002: {"Australia": 1, "South Africa": 2, "Sri Lanka": 3, "Pakistan": 4, "England": 5, "India": 6, "New Zealand": 7, "West Indies": 8, "Zimbabwe": 9},
-            2003: {"Australia": 1, "South Africa": 2, "India": 3, "Pakistan": 4, "New Zealand": 5, "England": 6, "Sri Lanka": 7, "West Indies": 8, "Zimbabwe": 9},
-            2004: {"Australia": 1, "South Africa": 2, "Sri Lanka": 3, "New Zealand": 4, "Pakistan": 5, "India": 6, "England": 7, "West Indies": 8, "Zimbabwe": 9},
-            2005: {"Australia": 1, "South Africa": 2, "Sri Lanka": 3, "England": 4, "Pakistan": 5, "India": 6, "New Zealand": 7, "West Indies": 8, "Zimbabwe": 9},
-            2006: {"Australia": 1, "South Africa": 2, "Pakistan": 3, "India": 4, "Sri Lanka": 5, "England": 6, "New Zealand": 7, "West Indies": 8, "Zimbabwe": 9},
-            2007: {"Australia": 1, "South Africa": 2, "Sri Lanka": 3, "New Zealand": 4, "Pakistan": 5, "India": 6, "England": 7, "West Indies": 8, "Zimbabwe": 9},
-            2008: {"Australia": 1, "South Africa": 2, "India": 3, "Pakistan": 4, "England": 5, "Sri Lanka": 6, "New Zealand": 7, "West Indies": 8, "Bangladesh": 9, "Zimbabwe": 10},
-            2009: {"South Africa": 1, "Australia": 2, "India": 3, "England": 4, "Sri Lanka": 5, "Pakistan": 6, "New Zealand": 7, "West Indies": 8, "Bangladesh": 9, "Zimbabwe": 10},
-            2010: {"Australia": 1, "India": 2, "South Africa": 3, "England": 4, "Sri Lanka": 5, "Pakistan": 6, "New Zealand": 7, "West Indies": 8, "Bangladesh": 9, "Zimbabwe": 10},
-            2011: {"Australia": 1, "India": 2, "Sri Lanka": 3, "South Africa": 4, "England": 5, "Pakistan": 6, "New Zealand": 7, "West Indies": 8, "Bangladesh": 9, "Zimbabwe": 10},
-            2012: {"England": 1, "South Africa": 2, "India": 3, "Australia": 4, "Sri Lanka": 5, "Pakistan": 6, "West Indies": 7, "New Zealand": 8, "Bangladesh": 9, "Zimbabwe": 10},
-            2013: {"India": 1, "England": 2, "South Africa": 3, "Australia": 4, "Sri Lanka": 5, "Pakistan": 6, "New Zealand": 7, "West Indies": 8, "Bangladesh": 9, "Zimbabwe": 10},
-            2014: {"Australia": 1, "India": 2, "South Africa": 3, "Sri Lanka": 4, "England": 5, "New Zealand": 6, "Pakistan": 7, "West Indies": 8, "Bangladesh": 9, "Zimbabwe": 10},
-            2015: {"Australia": 1, "India": 2, "South Africa": 3, "New Zealand": 4, "Sri Lanka": 5, "England": 6, "Bangladesh": 7, "Pakistan": 8, "West Indies": 9, "Afghanistan": 10},
-            2016: {"Australia": 1, "New Zealand": 2, "India": 3, "South Africa": 4, "England": 5, "Sri Lanka": 6, "Bangladesh": 7, "Pakistan": 8, "West Indies": 9, "Afghanistan": 10},
-            2017: {"South Africa": 1, "Australia": 2, "India": 3, "England": 4, "New Zealand": 5, "Pakistan": 6, "Bangladesh": 7, "Sri Lanka": 8, "West Indies": 9, "Afghanistan": 10},
-            2018: {"England": 1, "India": 2, "South Africa": 3, "New Zealand": 4, "Australia": 5, "Pakistan": 6, "Bangladesh": 7, "Sri Lanka": 8, "West Indies": 9, "Afghanistan": 10},
-            2019: {"England": 1, "India": 2, "New Zealand": 3, "South Africa": 4, "Australia": 5, "Pakistan": 6, "Bangladesh": 7, "Sri Lanka": 8, "West Indies": 9, "Afghanistan": 10},
-            2020: {"Australia": 1, "India": 2, "England": 3, "New Zealand": 4, "South Africa": 5, "Pakistan": 6, "Bangladesh": 7, "Sri Lanka": 8, "West Indies": 9, "Afghanistan": 10},
-            2021: {"New Zealand": 1, "Australia": 2, "India": 3, "England": 4, "South Africa": 5, "Pakistan": 6, "Bangladesh": 7, "West Indies": 8, "Sri Lanka": 9, "Afghanistan": 10},
-            2022: {"New Zealand": 1, "England": 2, "India": 3, "Pakistan": 4, "Australia": 5, "South Africa": 6, "Bangladesh": 7, "Sri Lanka": 8, "West Indies": 9, "Afghanistan": 10},
-            2023: {"Pakistan": 1, "India": 2, "Australia": 3, "South Africa": 4, "England": 5, "New Zealand": 6, "Sri Lanka": 7, "Bangladesh": 8, "Afghanistan": 9, "West Indies": 10},
-            2024: {"India": 1, "Australia": 2, "South Africa": 3, "Pakistan": 4, "New Zealand": 5, "England": 6, "Sri Lanka": 7, "Bangladesh": 8, "Afghanistan": 9, "West Indies": 10},
-            2025: {"India": 1, "Australia": 2, "South Africa": 3, "Pakistan": 4, "New Zealand": 5, "England": 6, "Sri Lanka": 7, "Bangladesh": 8, "Afghanistan": 9, "West Indies": 10},
-        }
-        hist_rank = historical.get(year, {})
-        if hist_rank:
-            return hist_rank
-        else:
-            st.warning(f"No historical data for {year}; using defaults.")
-            return {}
+def get_numerology(year):
+    s = sum(int(d) for d in str(year))
+    while s > 9 and s not in [11, 22, 33]:
+        s = sum(int(d) for d in str(s))
+    return s
+
+def get_zodiac(year):
+    index = (year - 4) % 12  # Adjusted to make 1924 = Rat (index 0)
+    return zodiac_animals[index]
+
+def get_group(animal):
+    for group, members in zodiac_groups.items():
+        if animal in members:
+            return members
+    return []
 
 def calculate_score(team, year_num, year_zod, host=False, form_rank=10, is_underdog=False):
     if team not in teams_data:
