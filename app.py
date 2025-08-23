@@ -2,6 +2,12 @@ import streamlit as st
 import requests
 from bs4 import BeautifulSoup
 
+def get_numerology(year):
+    s = sum(int(d) for d in str(year))
+    while s > 9 and s not in [11, 22, 33]:
+        s = sum(int(d) for d in str(s))
+    return s
+
 # Dictionary of teams with their test status year and country foundation year (expanded from conversation)
 teams_data = {
     "Afghanistan": {"test": 2018, "country": 1919},
