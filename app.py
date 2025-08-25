@@ -2,12 +2,64 @@ import streamlit as st
 import requests
 from bs4 import BeautifulSoup
 
+# Function to fetch rankings (scrape for current, hardcoded historical)
+def fetch_rankings(year, format_type):
+    format_map = {"ODI": "odi", "T20": "t20i", "Test/WTC": "test"}
+    icc_format = format_map.get(format_type, "odi")
+   
+    if year >= 2025: # Current or future: Scrape ICC
+        url = f"https://www.icc-cricket.com/rankings/team-rankings/mens/{icc_format}"
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            rankings = {}
+            table = soup.find('table', class_='table rankings-table')
+            if table:
+                rows = table.find_all('tr')[1:15] # Top ~12
+                for row in rows:
+                    cols = row.find_all('td')
+                    if len(cols) >= 2:
+                        position = int(cols[0].text.strip())
+                        team = cols[1].text.strip()
+                        rankings[team] = position
+            return rankings
+        else:
+            st.warning("Could not fetch current rankings; using defaults.")
+            return {}
+   
+    else: # Historical: Hardcoded dict from archives (expand as needed)
+        historical = {
+            2023: { # Pre-ODI WC September 2023 (from sources)
+                "Pakistan": 1,
+                "India": 2,
+                "Australia": 3,
+                "South Africa": 4,
+                "England": 5,
+                "New Zealand": 6,
+                "Sri Lanka": 7,
+                "Bangladesh": 8,
+                "Afghanistan": 9,
+                "West Indies": 10,
+                "Zimbabwe": 11,
+                "Ireland": 12,
+                "Netherlands": 13,
+            },
+            # Add more years, e.g., 2022: {...}
+        }
+        hist_rank = historical.get(year, {})
+        if hist_rank:
+            return hist_rank
+        else:
+            st.warning(f"No historical data for {year}; using defaults.")
+            return {}
+
 # Dictionary of teams with their test status year and country foundation year (expanded from conversation)
 teams_data = {
     "Afghanistan": {"test": 2018, "country": 1919},
     "Australia": {"test": 1877, "country": 1901},
     "Bangladesh": {"test": 2000, "country": 1971},
-    "Canada": {"test": None, "country": 1867},  # No Test status, use ODI/T20 founding approx 1968
+    "Canada": {"test": None, "country": 1867}, # No Test status, use ODI/T20 founding approx 1968
     "England": {"test": 1877, "country": 1707},
     "India": {"test": 1932, "country": 1947},
     "Ireland": {"test": 2018, "country": 1922},
@@ -24,7 +76,6 @@ teams_data = {
     "West Indies": {"test": 1928, "country": 1958},
     "Zimbabwe": {"test": 1992, "country": 1980},
 }
-
 # Updated friendly numbers based on conversation examples and Vedic compatibilities
 friendly = {
     1: [1, 3, 4, 5, 7, 9],
@@ -40,7 +91,6 @@ friendly = {
     22: [1, 2, 4, 5, 6, 7, 8],
     33: [1, 2, 3, 5, 6, 9],
 }
-
 # Updated enemy numbers based on conversation examples
 enemy_nums = {
     1: [2, 6, 8],
@@ -56,10 +106,8 @@ enemy_nums = {
     22: [3, 9],
     33: [4, 7, 8],
 }
-
 # Chinese zodiac animals based on year % 12 (starting from Rat for 1924=0)
 zodiac_animals = ["Rat", "Ox", "Tiger", "Rabbit", "Dragon", "Snake", "Horse", "Goat", "Monkey", "Rooster", "Dog", "Pig"]
-
 # Zodiac groups (allies/trines)
 zodiac_groups = {
     "group1": ["Rat", "Dragon", "Monkey"],
@@ -67,7 +115,6 @@ zodiac_groups = {
     "group3": ["Tiger", "Horse", "Dog"],
     "group4": ["Rabbit", "Goat", "Pig"],
 }
-
 # Secret friends (best compatibles)
 secret_friends = {
     "Rat": "Ox", "Ox": "Rat",
@@ -77,7 +124,6 @@ secret_friends = {
     "Snake": "Monkey", "Monkey": "Snake",
     "Horse": "Goat", "Goat": "Horse",
 }
-
 # Enemies (opposites, clashes)
 enemies = {
     "Rat": "Horse", "Horse": "Rat",
@@ -87,28 +133,25 @@ enemies = {
     "Dragon": "Dog", "Dog": "Dragon",
     "Snake": "Pig", "Pig": "Snake",
 }
-
 # Historical overrides for disqualification (energies where teams have won)
 history_overrides = {
-    "Australia": [1, 3, 5, 7, 9],  # Wins in these energies (e.g., 1987/2023 in 7)
-    "India": [3, 4],  # 1983/1992 in 3, 2011 in 4
-    "Sri Lanka": [7],  # 1996 in 7
-    "Pakistan": [3],  # 1992 in 3
-    "England": [3],  # 2019 in 3
-    "West Indies": [4, 8],  # 1975 in 4, 1979 in 8
+    "Australia": [1, 3, 5, 7, 9], # Wins in these energies (e.g., 1987/2023 in 7)
+    "India": [3, 4], # 1983/1992 in 3, 2011 in 4
+    "Sri Lanka": [7], # 1996 in 7
+    "Pakistan": [3], # 1992 in 3
+    "England": [3], # 2019 in 3
+    "West Indies": [4, 8], # 1975 in 4, 1979 in 8
     # Add more as needed from patterns
 }
-
-# Zodiac history (teams with wins in that zodiac) - Updated for multiples in Goat
+# Zodiac history (teams with wins in that zodiac)
 zodiac_history = {
-    "Rabbit": ["Australia", "India", "West Indies"],  # From patterns
+    "Rabbit": ["Australia", "India", "West Indies"], # From patterns
     "Goat": ["Australia", "Australia", "Australia", "West Indies"],
     "Pig": ["India", "Australia", "England"],
     "Rat": ["Sri Lanka"],
     "Monkey": ["Pakistan"],
     # Expand as needed
 }
-
 # Approximate rankings (defaults from 2025; user can override)
 default_rankings = {
     "Australia": 2, "India": 1, "England": 8, "Pakistan": 6, "South Africa": 5,
@@ -116,12 +159,11 @@ default_rankings = {
     "West Indies": 10, "Zimbabwe": 12, "Ireland": 11, "Netherlands": 13,
     # Add more
 }
-
 def fetch_rankings(year, format_type):
     format_map = {"ODI": "odi", "T20": "t20i", "Test/WTC": "test"}
     icc_format = format_map.get(format_type, "odi")
-    
-    if year >= 2025:  # Current or future: Scrape ICC
+   
+    if year >= 2025: # Current or future: Scrape ICC
         url = f"https://www.icc-cricket.com/rankings/team-rankings/mens/{icc_format}"
         headers = {'User-Agent': 'Mozilla/5.0'}
         response = requests.get(url, headers=headers)
@@ -130,7 +172,7 @@ def fetch_rankings(year, format_type):
             rankings = {}
             table = soup.find('table', class_='table rankings-table')
             if table:
-                rows = table.find_all('tr')[1:15]  # Top ~12
+                rows = table.find_all('tr')[1:15] # Top ~12
                 for row in rows:
                     cols = row.find_all('td')
                     if len(cols) >= 2:
@@ -141,8 +183,8 @@ def fetch_rankings(year, format_type):
         else:
             st.warning("Could not fetch current rankings; using defaults.")
             return {}
-    
-    else:  # Historical: Expanded dict for ODIs 1992-2025 (top 10 where available; approximated pre-2002)
+   
+    else: # Historical: Expanded dict for ODIs 1992-2025 (top 10 where available; approximated pre-2002)
         historical = {
             1992: {"West Indies": 1, "England": 2, "Australia": 3, "Pakistan": 4, "New Zealand": 5, "South Africa": 6, "India": 7, "Sri Lanka": 8, "Zimbabwe": 9},
             1993: {"West Indies": 1, "Australia": 2, "England": 3, "Pakistan": 4, "New Zealand": 5, "South Africa": 6, "India": 7, "Sri Lanka": 8, "Zimbabwe": 9},
@@ -347,7 +389,7 @@ if st.button("Predict Winner"):
     
     if scores:
         # Weak fit elimination: Filter out ranks >10 or -inf (tightened threshold for better alignment)
-        filtered_scores = {team: score for team, score in scores.items() if score != -float('inf') and form_ranks[team] <= (5 if year_num == 8 else 6)}
+        filtered_scores = {team: score for team, score in scores.items() if score != -float('inf') and form_ranks[team] <= 6}  # Tightened from 8
         if filtered_scores:
             predicted_winner = max(filtered_scores, key=filtered_scores.get)
             st.write(f"Predicted Winner: {predicted_winner}")
