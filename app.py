@@ -99,6 +99,9 @@ history_overrides = {
     # Add more as needed from patterns
 }
 
+# Intensity years for amplified history scoring
+intensity_years = [9]
+
 # Zodiac history (teams with wins in that zodiac) - Updated for multiples in Goat
 zodiac_history = {
     "Rabbit": ["Australia", "India", "West Indies"],  # From patterns
@@ -137,10 +140,10 @@ def fetch_rankings(year, format_type):
                         position = int(cols[0].text.strip())
                         team = cols[1].text.strip()
                         rankings[team] = position
-            return rankings
-        else:
-            st.warning("Could not fetch current rankings; using defaults.")
-            return {}
+                return rankings
+            else:
+                st.warning("Could not fetch current rankings; using defaults.")
+                return {}
     
     else:  # Historical: Expanded dict for ODIs 1992-2025 (top 10 where available; approximated pre-2002)
         historical = {
@@ -202,7 +205,7 @@ def get_group(animal):
             return members
     return []
 
-def calculate_score(team, year_num, year_zod, host=False, form_rank=10, is_underdog=False):
+def calculate_score(team, year_num, year_zod, stage="Full Tournament", host=False, form_rank=10, is_underdog=False):
     if team not in teams_data:
         return None
     
@@ -232,7 +235,7 @@ def calculate_score(team, year_num, year_zod, host=False, form_rank=10, is_under
         num_score += 0.25
     
     # Check double penalty
-    double_penalty = team_num in enemy_nums.get(year_num, [] ) and country_num in enemy_nums.get(year_num, [])
+    double_penalty = team_num in enemy_nums.get(year_num, []) and country_num in enemy_nums.get(year_num, [])
     
     # Zodiac score (team weighted more, reduced for country exact)
     zod_score = 0
@@ -273,13 +276,23 @@ def calculate_score(team, year_num, year_zod, host=False, form_rank=10, is_under
     
     total_score = num_score + zod_score
     
+    # Amp history in intensity years
+    if year_num in intensity_years and team in history_overrides and year_num in history_overrides[team]:
+        win_count = history_overrides[team].count(year_num)
+        total_score += 3 * win_count * 2 if win_count > 1 else 3  # Amp *2 for multiples
+    
+    # Upset boost for mid-tier in group stage
+    if stage == "Group Stage" and double_penalty and country_zod == year_zod:
+        total_score += 1  # Boost for upset potential
+    
     # Extra weight to numerology if karmic/master year (increased weight)
     if year_num in karmic_years:
         total_score += num_score * 1.0  # Increased from 0.5
     
     # Host boost if no double penalty (scaled for co-hosts)
     if host and not double_penalty:
-        total_score += 2 / len(hosts) if len(hosts) > 1 else 2  # Scale for co-hosts
+        hosts_count = len([h for h in host.split(",") if h.strip()]) if isinstance(host, str) else 1
+        total_score += 2 / hosts_count if hosts_count > 1 else 2  # Scale for co-hosts
     
     # Disqualify if double penalty unless history override
     if double_penalty and team_num != year_num:
@@ -311,6 +324,7 @@ st.write("Based on Refined Vedic Numerology and Chinese Astrology Method. This i
 
 year = st.number_input("World Cup Year", min_value=1900, max_value=2100, value=2023)
 format_type = st.selectbox("Cricket Format", ["ODI", "T20", "Test/WTC"])
+stage = st.selectbox("Stage", ["Full Tournament", "Group Stage", "Knockouts"])
 host = st.text_input("Host Team (optional, comma-separated if co-hosts)")
 participants_str = st.text_input("Participants (comma-separated, e.g., India,Australia,England)", value="Australia,England,South Africa,West Indies,New Zealand,India,Pakistan,Sri Lanka,Zimbabwe,Bangladesh,Ireland,Afghanistan")
 
@@ -341,23 +355,51 @@ if st.button("Predict Winner"):
     for team in participants:
         is_host = team.lower() in hosts
         is_underdog = team in underdog_teams
-        score = calculate_score(team, year_num, year_zod, host=is_host, form_rank=form_ranks[team], is_underdog=is_underdog)
+        score = calculate_score(team, year_num, year_zod, stage=stage, host=is_host, form_rank=form_ranks[team], is_underdog=is_underdog)
         if score is not None:
             scores[team] = score
     
     if scores:
         # Weak fit elimination: Filter out ranks >10 or -inf (tightened threshold for better alignment)
         filtered_scores = {team: score for team, score in scores.items() if score != -float('inf') and form_ranks[team] <= (5 if year_num == 8 else 6)}
+        
         if filtered_scores:
-            predicted_winner = max(filtered_scores, key=filtered_scores.get)
-            st.write(f"Predicted Winner: {predicted_winner}")
-            st.write("Filtered Scores (higher is better; weak fits eliminated):")
-            for team, score in sorted(filtered_scores.items(), key=lambda x: x[1], reverse=True):
-                st.write(f"{team}: {score}")
+            if stage == "Full Tournament":
+                predicted_winner = max(filtered_scores, key=filtered_scores.get)
+                st.write(f"Predicted Winner: {predicted_winner}")
+                st.write("Filtered Scores (higher is better; weak fits eliminated):")
+                for team, score in sorted(filtered_scores.items(), key=lambda x: x[1], reverse=True):
+                    st.write(f"{team}: {score}")
+            elif stage == "Group Stage":
+                top_8 = sorted(filtered_scores, key=filtered_scores.get, reverse=True)[:8]
+                st.write("Predicted Top 8 (Group Qualifiers): " + ", ".join(top_8))
+                st.write("Filtered Scores (higher is better; weak fits eliminated):")
+                for team, score in sorted(filtered_scores.items(), key=lambda x: x[1], reverse=True):
+                    st.write(f"{team}: {score}")
+            elif stage == "Knockouts":
+                top_4 = sorted(filtered_scores, key=filtered_scores.get, reverse=True)[:4]
+                st.write("Predicted Semifinalists: " + ", ".join(top_4))
+                st.write("Predicted Finalists: " + ", ".join(top_4[:2]))
+                predicted_winner = top_4[0]
+                st.write(f"Predicted Winner: {predicted_winner}")
+                st.write("Filtered Scores (higher is better; weak fits eliminated):")
+                for team, score in sorted(filtered_scores.items(), key=lambda x: x[1], reverse=True):
+                    st.write(f"{team}: {score}")
         else:
             st.write("No strong contenders after filtering; fallback to all scores.")
-            predicted_winner = max(scores, key=scores.get)
-            st.write(f"Predicted Winner: {predicted_winner}")
+            if stage == "Full Tournament":
+                predicted_winner = max(scores, key=scores.get)
+                st.write(f"Predicted Winner: {predicted_winner}")
+            elif stage == "Group Stage":
+                top_8 = sorted(scores, key=scores.get, reverse=True)[:8]
+                st.write("Predicted Top 8 (Group Qualifiers): " + ", ".join(top_8))
+            elif stage == "Knockouts":
+                top_4 = sorted(scores, key=scores.get, reverse=True)[:4]
+                st.write("Predicted Semifinalists: " + ", ".join(top_4))
+                st.write("Predicted Finalists: " + ", ".join(top_4[:2]))
+                predicted_winner = top_4[0]
+                st.write(f"Predicted Winner: {predicted_winner}")
+            
             st.write("All Scores:")
             for team, score in sorted(scores.items(), key=lambda x: x[1], reverse=True):
                 st.write(f"{team}: {score}")
