@@ -99,10 +99,10 @@ history_overrides = {
     # Add more as needed from patterns
 }
 
-# Zodiac history (teams with wins in that zodiac)
+# Zodiac history (teams with wins in that zodiac) - Updated for multiples in Goat
 zodiac_history = {
     "Rabbit": ["Australia", "India", "West Indies"],  # From patterns
-    "Goat": ["Australia", "West Indies"],
+    "Goat": ["Australia", "Australia", "Australia", "West Indies"],
     "Pig": ["India", "Australia", "England"],
     "Rat": ["Sri Lanka"],
     "Monkey": ["Pakistan"],
@@ -248,7 +248,7 @@ def calculate_score(team, year_num, year_zod, host=False, form_rank=10, is_under
         zod_score += 1  # neutral
     
     if country_zod == year_zod:
-        zod_score += 1  # Reduced from 1.5
+        zod_score += 0.5  # Reduced from 1
     if secret_friends.get(country_zod) == year_zod:
         zod_score += 1.5
     if country_zod in get_group(year_zod) and country_zod != year_zod:
@@ -259,17 +259,17 @@ def calculate_score(team, year_num, year_zod, host=False, form_rank=10, is_under
         zod_score += 0.5  # neutral
     
     # Amp exact zodiac in karmic years
-    karmic_years = [3, 7, 11, 22, 33]
+    karmic_years = [3, 7, 8, 11, 22, 33]  # Added 8
     if year_num in karmic_years:
         if team_zod == year_zod:
             zod_score += 2  # Extra amp for team exact
         if country_zod == year_zod:
             zod_score += 2  # Extra amp for country exact
     
-    # Zodiac history upgrade (scaled inversely for underdogs)
+    # Zodiac history upgrade (amped for multiples)
     if year_zod in zodiac_history and team in zodiac_history[year_zod]:
         win_count = zodiac_history[year_zod].count(team)
-        zod_score += 3 / win_count if win_count > 1 else 3  # Scale down for multiples
+        zod_score += 3 * win_count * 1.5 if win_count > 1 else 3  # Amp for multiples
     
     total_score = num_score + zod_score
     
@@ -277,9 +277,9 @@ def calculate_score(team, year_num, year_zod, host=False, form_rank=10, is_under
     if year_num in karmic_years:
         total_score += num_score * 1.0  # Increased from 0.5
     
-    # Host boost if no double penalty
+    # Host boost if no double penalty (scaled for co-hosts)
     if host and not double_penalty:
-        total_score += 2
+        total_score += 2 / len(hosts) if len(hosts) > 1 else 2  # Scale for co-hosts
     
     # Disqualify if double penalty unless history override
     if double_penalty and team_num != year_num:
@@ -294,6 +294,10 @@ def calculate_score(team, year_num, year_zod, host=False, form_rank=10, is_under
     if year_num in karmic_years:
         form_boost /= 2  # Reduced impact in karmic years
     total_score += form_boost
+    
+    # Amp form for #1 in endurance years
+    if year_num == 8 and form_rank == 1:
+        total_score += 1
     
     # Underdog boost if selected and karmic year
     if is_underdog and year_num in karmic_years:
@@ -343,7 +347,7 @@ if st.button("Predict Winner"):
     
     if scores:
         # Weak fit elimination: Filter out ranks >10 or -inf (tightened threshold for better alignment)
-        filtered_scores = {team: score for team, score in scores.items() if score != -float('inf') and form_ranks[team] <= 6}  # Tightened from 8
+        filtered_scores = {team: score for team, score in scores.items() if score != -float('inf') and form_ranks[team] <= (5 if year_num == 8 else 6)}
         if filtered_scores:
             predicted_winner = max(filtered_scores, key=filtered_scores.get)
             st.write(f"Predicted Winner: {predicted_winner}")
