@@ -99,9 +99,6 @@ history_overrides = {
     # Add more as needed from patterns
 }
 
-# Intensity years for amplified history scoring
-intensity_years = [9]
-
 # Zodiac history (teams with wins in that zodiac) - Updated for multiples in Goat
 zodiac_history = {
     "Rabbit": ["Australia", "India", "West Indies"],  # From patterns
@@ -125,74 +122,74 @@ def fetch_rankings(year, format_type):
     icc_format = format_map.get(format_type, "odi")
     
     if year >= 2025:  # Current or future: Scrape ICC
-        url = f"https://www.icc-cricket.com/rankings/team-rankings/mens/{icc_format}"
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        response = requests.get(url, headers=headers)
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.text, 'html.parser')
-            rankings = {}
-            table = soup.find('table', class_='table rankings-table')
-            if table:
-                rows = table.find_all('tr')[1:15]  # Top ~12
-                for row in rows:
-                    cols = row.find_all('td')
-                    if len(cols) >= 2:
-                        position = int(cols[0].text.strip())
-                        team = cols[1].text.strip()
-                        rankings[team] = position
-                return rankings
-            else:
-                st.warning("Could not fetch current rankings; using defaults.")
-                return {}
+    url = f"https://www.icc-cricket.com/rankings/team-rankings/mens/{icc_format}"
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+    soup = BeautifulSoup(response.text, 'html.parser')
+    rankings = {}
+    table = soup.find('table', class_='table rankings-table')
+    if table:
+    rows = table.find_all('tr')[1:15]  # Top ~12
+    for row in rows:
+    cols = row.find_all('td')
+    if len(cols) >= 2:
+    position = int(cols[0].text.strip())
+    team = cols[1].text.strip()
+    rankings[team] = position
+    return rankings
+    else:
+    st.warning("Could not fetch current rankings; using defaults.")
+    return {}
     
     else:  # Historical: Expanded dict for ODIs 1992-2025 (top 10 where available; approximated pre-2002)
-        historical = {
-            1992: {"West Indies": 1, "England": 2, "Australia": 3, "Pakistan": 4, "New Zealand": 5, "South Africa": 6, "India": 7, "Sri Lanka": 8, "Zimbabwe": 9},
-            1993: {"West Indies": 1, "Australia": 2, "England": 3, "Pakistan": 4, "New Zealand": 5, "South Africa": 6, "India": 7, "Sri Lanka": 8, "Zimbabwe": 9},
-            1994: {"Australia": 1, "West Indies": 2, "Pakistan": 3, "England": 4, "South Africa": 5, "New Zealand": 6, "India": 7, "Sri Lanka": 8, "Zimbabwe": 9},
-            1995: {"Australia": 1, "South Africa": 2, "West Indies": 3, "Pakistan": 4, "England": 5, "New Zealand": 6, "India": 7, "Sri Lanka": 8, "Zimbabwe": 9},
-            1996: {"South Africa": 1, "Australia": 2, "Pakistan": 3, "West Indies": 4, "India": 5, "England": 6, "Sri Lanka": 7, "New Zealand": 8, "Zimbabwe": 9},
-            1997: {"South Africa": 1, "Australia": 2, "Pakistan": 3, "England": 4, "India": 5, "West Indies": 6, "Sri Lanka": 7, "New Zealand": 8, "Zimbabwe": 9},
-            1998: {"South Africa": 1, "Australia": 2, "England": 3, "Pakistan": 4, "India": 5, "West Indies": 6, "Sri Lanka": 7, "New Zealand": 8, "Zimbabwe": 9},
-            1999: {"South Africa": 1, "Australia": 2, "Pakistan": 3, "England": 4, "India": 5, "West Indies": 6, "Sri Lanka": 7, "New Zealand": 8, "Zimbabwe": 9},
-            2000: {"Australia": 1, "South Africa": 2, "Pakistan": 3, "India": 4, "Sri Lanka": 5, "England": 6, "New Zealand": 7, "West Indies": 8, "Zimbabwe": 9},
-            2001: {"Australia": 1, "South Africa": 2, "Pakistan": 3, "Sri Lanka": 4, "India": 5, "England": 6, "New Zealand": 7, "West Indies": 8, "Zimbabwe": 9},
-            2002: {"Australia": 1, "South Africa": 2, "Sri Lanka": 3, "Pakistan": 4, "England": 5, "India": 6, "New Zealand": 7, "West Indies": 8, "Zimbabwe": 9},
-            2003: {"Australia": 1, "South Africa": 2, "India": 3, "Pakistan": 4, "New Zealand": 5, "England": 6, "Sri Lanka": 7, "West Indies": 8, "Zimbabwe": 9},
-            2004: {"Australia": 1, "South Africa": 2, "Sri Lanka": 3, "New Zealand": 4, "Pakistan": 5, "India": 6, "England": 7, "West Indies": 8, "Zimbabwe": 9},
-            2005: {"Australia": 1, "South Africa": 2, "Sri Lanka": 3, "England": 4, "Pakistan": 5, "India": 6, "New Zealand": 7, "West Indies": 8, "Zimbabwe": 9},
-            2006: {"Australia": 1, "South Africa": 2, "Pakistan": 3, "India": 4, "Sri Lanka": 5, "England": 6, "New Zealand": 7, "West Indies": 8, "Zimbabwe": 9},
-            2007: {"Australia": 1, "South Africa": 2, "Sri Lanka": 3, "New Zealand": 4, "Pakistan": 5, "India": 6, "England": 7, "West Indies": 8, "Zimbabwe": 9},
-            2008: {"Australia": 1, "South Africa": 2, "India": 3, "Pakistan": 4, "England": 5, "Sri Lanka": 6, "New Zealand": 7, "West Indies": 8, "Bangladesh": 9, "Zimbabwe": 10},
-            2009: {"South Africa": 1, "Australia": 2, "India": 3, "England": 4, "Sri Lanka": 5, "Pakistan": 6, "New Zealand": 7, "West Indies": 8, "Bangladesh": 9, "Zimbabwe": 10},
-            2010: {"Australia": 1, "India": 2, "South Africa": 3, "England": 4, "Sri Lanka": 5, "Pakistan": 6, "New Zealand": 7, "West Indies": 8, "Bangladesh": 9, "Zimbabwe": 10},
-            2011: {"Australia": 1, "India": 2, "Sri Lanka": 3, "South Africa": 4, "England": 5, "Pakistan": 6, "New Zealand": 7, "West Indies": 8, "Bangladesh": 9, "Zimbabwe": 10},
-            2012: {"England": 1, "South Africa": 2, "India": 3, "Australia": 4, "Sri Lanka": 5, "Pakistan": 6, "West Indies": 7, "New Zealand": 8, "Bangladesh": 9, "Zimbabwe": 10},
-            2013: {"India": 1, "England": 2, "South Africa": 3, "Australia": 4, "Sri Lanka": 5, "Pakistan": 6, "New Zealand": 7, "West Indies": 8, "Bangladesh": 9, "Zimbabwe": 10},
-            2014: {"Australia": 1, "India": 2, "South Africa": 3, "Sri Lanka": 4, "England": 5, "New Zealand": 6, "Pakistan": 7, "West Indies": 8, "Bangladesh": 9, "Zimbabwe": 10},
-            2015: {"Australia": 1, "India": 2, "South Africa": 3, "New Zealand": 4, "Sri Lanka": 5, "England": 6, "Bangladesh": 7, "Pakistan": 8, "West Indies": 9, "Afghanistan": 10},
-            2016: {"Australia": 1, "New Zealand": 2, "India": 3, "South Africa": 4, "England": 5, "Sri Lanka": 6, "Bangladesh": 7, "Pakistan": 8, "West Indies": 9, "Afghanistan": 10},
-            2017: {"South Africa": 1, "Australia": 2, "India": 3, "England": 4, "New Zealand": 5, "Pakistan": 6, "Bangladesh": 7, "Sri Lanka": 8, "West Indies": 9, "Afghanistan": 10},
-            2018: {"England": 1, "India": 2, "South Africa": 3, "New Zealand": 4, "Australia": 5, "Pakistan": 6, "Bangladesh": 7, "Sri Lanka": 8, "West Indies": 9, "Afghanistan": 10},
-            2019: {"England": 1, "India": 2, "New Zealand": 3, "South Africa": 4, "Australia": 5, "Pakistan": 6, "Bangladesh": 7, "Sri Lanka": 8, "West Indies": 9, "Afghanistan": 10},
-            2020: {"Australia": 1, "India": 2, "England": 3, "New Zealand": 4, "South Africa": 5, "Pakistan": 6, "Bangladesh": 7, "Sri Lanka": 8, "West Indies": 9, "Afghanistan": 10},
-            2021: {"New Zealand": 1, "Australia": 2, "India": 3, "England": 4, "South Africa": 5, "Pakistan": 6, "Bangladesh": 7, "West Indies": 8, "Sri Lanka": 9, "Afghanistan": 10},
-            2022: {"New Zealand": 1, "England": 2, "India": 3, "Pakistan": 4, "Australia": 5, "South Africa": 6, "Bangladesh": 7, "Sri Lanka": 8, "West Indies": 9, "Afghanistan": 10},
-            2023: {"Pakistan": 1, "India": 2, "Australia": 3, "South Africa": 4, "England": 5, "New Zealand": 6, "Sri Lanka": 7, "Bangladesh": 8, "Afghanistan": 9, "West Indies": 10},
-            2024: {"India": 1, "Australia": 2, "South Africa": 3, "Pakistan": 4, "New Zealand": 5, "England": 6, "Sri Lanka": 7, "Bangladesh": 8, "Afghanistan": 9, "West Indies": 10},
-            2025: {"India": 1, "Australia": 2, "South Africa": 3, "Pakistan": 4, "New Zealand": 5, "England": 6, "Sri Lanka": 7, "Bangladesh": 8, "Afghanistan": 9, "West Indies": 10},
-        }
-        hist_rank = historical.get(year, {})
-        if hist_rank:
-            return hist_rank
-        else:
-            st.warning(f"No historical data for {year}; using defaults.")
-            return {}
+    historical = {
+    1992: {"West Indies": 1, "England": 2, "Australia": 3, "Pakistan": 4, "New Zealand": 5, "South Africa": 6, "India": 7, "Sri Lanka": 8, "Zimbabwe": 9},
+    1993: {"West Indies": 1, "Australia": 2, "England": 3, "Pakistan": 4, "New Zealand": 5, "South Africa": 6, "India": 7, "Sri Lanka": 8, "Zimbabwe": 9},
+    1994: {"Australia": 1, "West Indies": 2, "Pakistan": 3, "England": 4, "South Africa": 5, "New Zealand": 6, "India": 7, "Sri Lanka": 8, "Zimbabwe": 9},
+    1995: {"Australia": 1, "South Africa": 2, "West Indies": 3, "Pakistan": 4, "England": 5, "New Zealand": 6, "India": 7, "Sri Lanka": 8, "Zimbabwe": 9},
+    1996: {"South Africa": 1, "Australia": 2, "Pakistan": 3, "West Indies": 4, "India": 5, "England": 6, "Sri Lanka": 7, "New Zealand": 8, "Zimbabwe": 9},
+    1997: {"South Africa": 1, "Australia": 2, "Pakistan": 3, "England": 4, "India": 5, "West Indies": 6, "Sri Lanka": 7, "New Zealand": 8, "Zimbabwe": 9},
+    1998: {"South Africa": 1, "Australia": 2, "England": 3, "Pakistan": 4, "India": 5, "West Indies": 6, "Sri Lanka": 7, "New Zealand": 8, "Zimbabwe": 9},
+    1999: {"South Africa": 1, "Australia": 2, "Pakistan": 3, "England": 4, "India": 5, "West Indies": 6, "Sri Lanka": 7, "New Zealand": 8, "Zimbabwe": 9},
+    2000: {"Australia": 1, "South Africa": 2, "Pakistan": 3, "India": 4, "Sri Lanka": 5, "England": 6, "New Zealand": 7, "West Indies": 8, "Zimbabwe": 9},
+    2001: {"Australia": 1, "South Africa": 2, "Pakistan": 3, "Sri Lanka": 4, "India": 5, "England": 6, "New Zealand": 7, "West Indies": 8, "Zimbabwe": 9},
+    2002: {"Australia": 1, "South Africa": 2, "Sri Lanka": 3, "Pakistan": 4, "England": 5, "India": 6, "New Zealand": 7, "West Indies": 8, "Zimbabwe": 9},
+    2003: {"Australia": 1, "South Africa": 2, "India": 3, "Pakistan": 4, "New Zealand": 5, "England": 6, "Sri Lanka": 7, "West Indies": 8, "Zimbabwe": 9},
+    2004: {"Australia": 1, "South Africa": 2, "Sri Lanka": 3, "New Zealand": 4, "Pakistan": 5, "India": 6, "England": 7, "West Indies": 8, "Zimbabwe": 9},
+    2005: {"Australia": 1, "South Africa": 2, "Sri Lanka": 3, "England": 4, "Pakistan": 5, "India": 6, "New Zealand": 7, "West Indies": 8, "Zimbabwe": 9},
+    2006: {"Australia": 1, "South Africa": 2, "Pakistan": 3, "India": 4, "Sri Lanka": 5, "England": 6, "New Zealand": 7, "West Indies": 8, "Zimbabwe": 9},
+    2007: {"Australia": 1, "South Africa": 2, "Sri Lanka": 3, "New Zealand": 4, "Pakistan": 5, "India": 6, "England": 7, "West Indies": 8, "Zimbabwe": 9},
+    2008: {"Australia": 1, "South Africa": 2, "India": 3, "Pakistan": 4, "England": 5, "Sri Lanka": 6, "New Zealand": 7, "West Indies": 8, "Bangladesh": 9, "Zimbabwe": 10},
+    2009: {"South Africa": 1, "Australia": 2, "India": 3, "England": 4, "Sri Lanka": 5, "Pakistan": 6, "New Zealand": 7, "West Indies": 8, "Bangladesh": 9, "Zimbabwe": 10},
+    2010: {"Australia": 1, "India": 2, "South Africa": 3, "England": 4, "Sri Lanka": 5, "Pakistan": 6, "New Zealand": 7, "West Indies": 8, "Bangladesh": 9, "Zimbabwe": 10},
+    2011: {"Australia": 1, "India": 2, "Sri Lanka": 3, "South Africa": 4, "England": 5, "Pakistan": 6, "New Zealand": 7, "West Indies": 8, "Bangladesh": 9, "Zimbabwe": 10},
+    2012: {"England": 1, "South Africa": 2, "India": 3, "Australia": 4, "Sri Lanka": 5, "Pakistan": 6, "West Indies": 7, "New Zealand": 8, "Bangladesh": 9, "Zimbabwe": 10},
+    2013: {"India": 1, "England": 2, "South Africa": 3, "Australia": 4, "Sri Lanka": 5, "Pakistan": 6, "New Zealand": 7, "West Indies": 8, "Bangladesh": 9, "Zimbabwe": 10},
+    2014: {"Australia": 1, "India": 2, "South Africa": 3, "Sri Lanka": 4, "England": 5, "New Zealand": 6, "Pakistan": 7, "West Indies": 8, "Bangladesh": 9, "Zimbabwe": 10},
+    2015: {"Australia": 1, "India": 2, "South Africa": 3, "New Zealand": 4, "Sri Lanka": 5, "England": 6, "Bangladesh": 7, "Pakistan": 8, "West Indies": 9, "Afghanistan": 10},
+    2016: {"Australia": 1, "New Zealand": 2, "India": 3, "South Africa": 4, "England": 5, "Sri Lanka": 6, "Bangladesh": 7, "Pakistan": 8, "West Indies": 9, "Afghanistan": 10},
+    2017: {"South Africa": 1, "Australia": 2, "India": 3, "England": 4, "New Zealand": 5, "Pakistan": 6, "Bangladesh": 7, "Sri Lanka": 8, "West Indies": 9, "Afghanistan": 10},
+    2018: {"England": 1, "India": 2, "South Africa": 3, "New Zealand": 4, "Australia": 5, "Pakistan": 6, "Bangladesh": 7, "Sri Lanka": 8, "West Indies": 9, "Afghanistan": 10},
+    2019: {"England": 1, "India": 2, "New Zealand": 3, "South Africa": 4, "Australia": 5, "Pakistan": 6, "Bangladesh": 7, "Sri Lanka": 8, "West Indies": 9, "Afghanistan": 10},
+    2020: {"Australia": 1, "India": 2, "England": 3, "New Zealand": 4, "South Africa": 5, "Pakistan": 6, "Bangladesh": 7, "Sri Lanka": 8, "West Indies": 9, "Afghanistan": 10},
+    2021: {"New Zealand": 1, "Australia": 2, "India": 3, "England": 4, "South Africa": 5, "Pakistan": 6, "Bangladesh": 7, "West Indies": 8, "Sri Lanka": 9, "Afghanistan": 10},
+    2022: {"New Zealand": 1, "England": 2, "India": 3, "Pakistan": 4, "Australia": 5, "South Africa": 6, "Bangladesh": 7, "Sri Lanka": 8, "West Indies": 9, "Afghanistan": 10},
+    2023: {"Pakistan": 1, "India": 2, "Australia": 3, "South Africa": 4, "England": 5, "New Zealand": 6, "Sri Lanka": 7, "Bangladesh": 8, "Afghanistan": 9, "West Indies": 10},
+    2024: {"India": 1, "Australia": 2, "South Africa": 3, "Pakistan": 4, "New Zealand": 5, "England": 6, "Sri Lanka": 7, "Bangladesh": 8, "Afghanistan": 9, "West Indies": 10},
+    2025: {"India": 1, "Australia": 2, "South Africa": 3, "Pakistan": 4, "New Zealand": 5, "England": 6, "Sri Lanka": 7, "Bangladesh": 8, "Afghanistan": 9, "West Indies": 10},
+    }
+    hist_rank = historical.get(year, {})
+    if hist_rank:
+    return hist_rank
+    else:
+    st.warning(f"No historical data for {year}; using defaults.")
+    return {}
 
 def get_numerology(year):
     s = sum(int(d) for d in str(year))
     while s > 9 and s not in [11, 22, 33]:
-        s = sum(int(d) for d in str(s))
+    s = sum(int(d) for d in str(s))
     return s
 
 def get_zodiac(year):
@@ -201,13 +198,13 @@ def get_zodiac(year):
 
 def get_group(animal):
     for group, members in zodiac_groups.items():
-        if animal in members:
-            return members
+    if animal in members:
+    return members
     return []
 
-def calculate_score(team, year_num, year_zod, stage="Full Tournament", host=False, form_rank=10, is_underdog=False):
+def calculate_score(team, year_num, year_zod, host=False, form_rank=10, is_underdog=False):
     if team not in teams_data:
-        return None
+    return None
     
     data = teams_data[team]
     test_year = data["test"] if data["test"] else data["country"]  # Fallback for non-Test teams
@@ -221,100 +218,94 @@ def calculate_score(team, year_num, year_zod, stage="Full Tournament", host=Fals
     # Numerology score (team weighted more)
     num_score = 0
     if team_num in friendly.get(year_num, []):
-        num_score += 2
+    num_score += 2
     elif team_num in enemy_nums.get(year_num, []):
-        num_score -= 2
+    num_score -= 2
     else:
-        num_score += 0.5
+    num_score += 0.5
     
     if country_num in friendly.get(year_num, []):
-        num_score += 1
+    num_score += 1
     elif country_num in enemy_nums.get(year_num, []):
-        num_score -= 1
+    num_score -= 1
     else:
-        num_score += 0.25
+    num_score += 0.25
     
     # Check double penalty
-    double_penalty = team_num in enemy_nums.get(year_num, []) and country_num in enemy_nums.get(year_num, [])
+    double_penalty = team_num in enemy_nums.get(year_num, [] ) and country_num in enemy_nums.get(year_num, [])
     
     # Zodiac score (team weighted more, reduced for country exact)
     zod_score = 0
     if team_zod == year_zod:
-        zod_score += 3
+    zod_score += 3
     if secret_friends.get(team_zod) == year_zod:
-        zod_score += 3
+    zod_score += 3
     if team_zod in get_group(year_zod) and team_zod != year_zod:
-        zod_score += 2
+    zod_score += 2
     if enemies.get(team_zod) == year_zod:
-        zod_score -= 3
+    zod_score -= 3
     else:
-        zod_score += 1  # neutral
+    zod_score += 1  # neutral
     
     if country_zod == year_zod:
-        zod_score += 0.5  # Reduced from 1
+    zod_score += 0.5  # Reduced from 1
     if secret_friends.get(country_zod) == year_zod:
-        zod_score += 1.5
+    zod_score += 1.5
     if country_zod in get_group(year_zod) and country_zod != year_zod:
-        zod_score += 1
+    zod_score += 1
     if enemies.get(country_zod) == year_zod:
-        zod_score -= 1.5
+    zod_score -= 1.5
     else:
-        zod_score += 0.5  # neutral
+    zod_score += 0.5  # neutral
     
     # Amp exact zodiac in karmic years
     karmic_years = [3, 7, 8, 11, 22, 33]  # Added 8
     if year_num in karmic_years:
-        if team_zod == year_zod:
-            zod_score += 2  # Extra amp for team exact
-        if country_zod == year_zod:
-            zod_score += 2  # Extra amp for country exact
+    if team_zod == year_zod:
+    zod_score += 2  # Extra amp for team exact
+    if country_zod == year_zod:
+    zod_score += 2  # Extra amp for country exact
     
     # Zodiac history upgrade (amped for multiples)
     if year_zod in zodiac_history and team in zodiac_history[year_zod]:
-        win_count = zodiac_history[year_zod].count(team)
-        zod_score += 3 * win_count * 1.5 if win_count > 1 else 3  # Amp for multiples
+    win_count = zodiac_history[year_zod].count(team)
+    zod_score += 3 * win_count * 1.5 if win_count > 1 else 3  # Amp for multiples
     
     total_score = num_score + zod_score
     
-    # Amp history in intensity years
-    if year_num in intensity_years and team in history_overrides and year_num in history_overrides[team]:
-        win_count = history_overrides[team].count(year_num)
-        total_score += 3 * win_count * 2 if win_count > 1 else 3  # Amp *2 for multiples
-    
-    # Upset boost for mid-tier in group stage
-    if stage == "Group Stage" and double_penalty and country_zod == year_zod:
-        total_score += 1  # Boost for upset potential
-    
     # Extra weight to numerology if karmic/master year (increased weight)
     if year_num in karmic_years:
-        total_score += num_score * 1.0  # Increased from 0.5
+    total_score += num_score * 1.0  # Increased from 0.5
+    if year_num in karmic_years and year_zod in zodiac_history and team in zodiac_history[year_zod]:
+        win_count = zodiac_history[year_zod].count(team)
+        total_score += 5 * win_count
+
     
     # Host boost if no double penalty (scaled for co-hosts)
     if host and not double_penalty:
-        hosts_count = len([h for h in host.split(",") if h.strip()]) if isinstance(host, str) else 1
-        total_score += 2 / hosts_count if hosts_count > 1 else 2  # Scale for co-hosts
+    total_score += 2 / len(hosts) if len(hosts) > 1 else 2  # Scale for co-hosts
     
     # Disqualify if double penalty unless history override
     if double_penalty and team_num != year_num:
-        if team in history_overrides and year_num in history_overrides[team]:
-            win_count = history_overrides[team].count(year_num)
-            total_score += 3 / win_count if win_count > 1 else 3  # Scaled down for multiples
-        else:
-            total_score = -float('inf')
+    if team in history_overrides and year_num in history_overrides[team]:
+    win_count = history_overrides[team].count(year_num)
+    total_score += 3 / win_count if win_count > 1 else 3  # Scaled down for multiples
+    else:
+    total_score = -float('inf')
     
     # Form boost (lower rank = higher boost, reduced in karmic years)
     form_boost = (21 - form_rank) / 5
     if year_num in karmic_years:
-        form_boost /= 2  # Reduced impact in karmic years
+    form_boost /= 2  # Reduced impact in karmic years
     total_score += form_boost
     
     # Amp form for #1 in endurance years
     if year_num == 8 and form_rank == 1:
-        total_score += 1
+    total_score += 1
     
     # Underdog boost if selected and karmic year
     if is_underdog and year_num in karmic_years:
-        total_score += 2
+    total_score += 2
     
     return total_score
 
@@ -324,7 +315,6 @@ st.write("Based on Refined Vedic Numerology and Chinese Astrology Method. This i
 
 year = st.number_input("World Cup Year", min_value=1900, max_value=2100, value=2023)
 format_type = st.selectbox("Cricket Format", ["ODI", "T20", "Test/WTC"])
-stage = st.selectbox("Stage", ["Full Tournament", "Group Stage", "Knockouts"])
 host = st.text_input("Host Team (optional, comma-separated if co-hosts)")
 participants_str = st.text_input("Participants (comma-separated, e.g., India,Australia,England)", value="Australia,England,South Africa,West Indies,New Zealand,India,Pakistan,Sri Lanka,Zimbabwe,Bangladesh,Ireland,Afghanistan")
 
@@ -353,55 +343,27 @@ if st.button("Predict Winner"):
     scores = {}
     hosts = [h.strip().lower() for h in host.split(",") if h.strip()]
     for team in participants:
-        is_host = team.lower() in hosts
-        is_underdog = team in underdog_teams
-        score = calculate_score(team, year_num, year_zod, stage=stage, host=is_host, form_rank=form_ranks[team], is_underdog=is_underdog)
-        if score is not None:
-            scores[team] = score
+    is_host = team.lower() in hosts
+    is_underdog = team in underdog_teams
+    score = calculate_score(team, year_num, year_zod, host=is_host, form_rank=form_ranks[team], is_underdog=is_underdog)
+    if score is not None:
+    scores[team] = score
     
     if scores:
-        # Weak fit elimination: Filter out ranks >10 or -inf (tightened threshold for better alignment)
-        filtered_scores = {team: score for team, score in scores.items() if score != -float('inf') and form_ranks[team] <= (5 if year_num == 8 else 6)}
-        
-        if filtered_scores:
-            if stage == "Full Tournament":
-                predicted_winner = max(filtered_scores, key=filtered_scores.get)
-                st.write(f"Predicted Winner: {predicted_winner}")
-                st.write("Filtered Scores (higher is better; weak fits eliminated):")
-                for team, score in sorted(filtered_scores.items(), key=lambda x: x[1], reverse=True):
-                    st.write(f"{team}: {score}")
-            elif stage == "Group Stage":
-                top_8 = sorted(filtered_scores, key=filtered_scores.get, reverse=True)[:8]
-                st.write("Predicted Top 8 (Group Qualifiers): " + ", ".join(top_8))
-                st.write("Filtered Scores (higher is better; weak fits eliminated):")
-                for team, score in sorted(filtered_scores.items(), key=lambda x: x[1], reverse=True):
-                    st.write(f"{team}: {score}")
-            elif stage == "Knockouts":
-                top_4 = sorted(filtered_scores, key=filtered_scores.get, reverse=True)[:4]
-                st.write("Predicted Semifinalists: " + ", ".join(top_4))
-                st.write("Predicted Finalists: " + ", ".join(top_4[:2]))
-                predicted_winner = top_4[0]
-                st.write(f"Predicted Winner: {predicted_winner}")
-                st.write("Filtered Scores (higher is better; weak fits eliminated):")
-                for team, score in sorted(filtered_scores.items(), key=lambda x: x[1], reverse=True):
-                    st.write(f"{team}: {score}")
-        else:
-            st.write("No strong contenders after filtering; fallback to all scores.")
-            if stage == "Full Tournament":
-                predicted_winner = max(scores, key=scores.get)
-                st.write(f"Predicted Winner: {predicted_winner}")
-            elif stage == "Group Stage":
-                top_8 = sorted(scores, key=scores.get, reverse=True)[:8]
-                st.write("Predicted Top 8 (Group Qualifiers): " + ", ".join(top_8))
-            elif stage == "Knockouts":
-                top_4 = sorted(scores, key=scores.get, reverse=True)[:4]
-                st.write("Predicted Semifinalists: " + ", ".join(top_4))
-                st.write("Predicted Finalists: " + ", ".join(top_4[:2]))
-                predicted_winner = top_4[0]
-                st.write(f"Predicted Winner: {predicted_winner}")
-            
-            st.write("All Scores:")
-            for team, score in sorted(scores.items(), key=lambda x: x[1], reverse=True):
-                st.write(f"{team}: {score}")
+    # Weak fit elimination: Filter out ranks >10 or -inf (tightened threshold for better alignment)
+    filtered_scores = {team: score for team, score in scores.items() if score != -float('inf') and form_ranks[team] <= (5 if year_num == 8 else 6)}
+    if filtered_scores:
+    predicted_winner = max(filtered_scores, key=filtered_scores.get)
+    st.write(f"Predicted Winner: {predicted_winner}")
+    st.write("Filtered Scores (higher is better; weak fits eliminated):")
+    for team, score in sorted(filtered_scores.items(), key=lambda x: x[1], reverse=True):
+    st.write(f"{team}: {score}")
     else:
-        st.write("No valid teams provided.")
+    st.write("No strong contenders after filtering; fallback to all scores.")
+    predicted_winner = max(scores, key=scores.get)
+    st.write(f"Predicted Winner: {predicted_winner}")
+    st.write("All Scores:")
+    for team, score in sorted(scores.items(), key=lambda x: x[1], reverse=True):
+    st.write(f"{team}: {score}")
+    else:
+    st.write("No valid teams provided.")
