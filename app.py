@@ -141,7 +141,6 @@ def fetch_rankings(year, format_type):
             else:
                 st.warning("Could not fetch current rankings; using defaults.")
                 return {}
-    
     else:  # Historical: Expanded dict for ODIs 1992-2025 (top 10 where available; approximated pre-2002)
         historical = {
             1992: {"West Indies": 1, "England": 2, "Australia": 3, "Pakistan": 4, "New Zealand": 5, "South Africa": 6, "India": 7, "Sri Lanka": 8, "Zimbabwe": 9},
@@ -202,7 +201,7 @@ def get_group(animal):
             return members
     return []
 
-def calculate_score(team, year_num, year_zod, host=False, form_rank=10, is_underdog=False):
+def calculate_score(team, year_num, year_zod, year, host=False, form_rank=10, is_underdog=False):
     if team not in teams_data:
         return None
     
@@ -218,90 +217,118 @@ def calculate_score(team, year_num, year_zod, host=False, form_rank=10, is_under
     # Numerology score (team weighted more)
     num_score = 0
     if team_num in friendly.get(year_num, []):
-    num_score += 2
+        num_score += 2
     elif team_num in enemy_nums.get(year_num, []):
-    num_score -= 2
+        num_score -= 2
     else:
-    num_score += 0.5
+        num_score += 0.5
     
     if country_num in friendly.get(year_num, []):
-    num_score += 1
+        num_score += 1
     elif country_num in enemy_nums.get(year_num, []):
-    num_score -= 1
+        num_score -= 1
     else:
-    num_score += 0.25
+        num_score += 0.25
     
     # Check double penalty
-    double_penalty = team_num in enemy_nums.get(year_num, [] ) and country_num in enemy_nums.get(year_num, [])
+    double_penalty = team_num in enemy_nums.get(year_num, []) and country_num in enemy_nums.get(year_num, [])
     
     # Zodiac score (team weighted more, reduced for country exact)
     zod_score = 0
     if team_zod == year_zod:
-    zod_score += 3
+        zod_score += 3
     if secret_friends.get(team_zod) == year_zod:
-    zod_score += 3
+        zod_score += 3
     if team_zod in get_group(year_zod) and team_zod != year_zod:
-    zod_score += 2
+        zod_score += 2
     if enemies.get(team_zod) == year_zod:
-    zod_score -= 3
+        zod_score -= 3
     else:
-    zod_score += 1  # neutral
+        zod_score += 1  # neutral
     
     if country_zod == year_zod:
-    zod_score += 0.5  # Reduced from 1
+        zod_score += 0.5  # Reduced from 1
     if secret_friends.get(country_zod) == year_zod:
-    zod_score += 1.5
+        zod_score += 1.5
     if country_zod in get_group(year_zod) and country_zod != year_zod:
-    zod_score += 1
+        zod_score += 1
     if enemies.get(country_zod) == year_zod:
-    zod_score -= 1.5
+        zod_score -= 1.5
     else:
-    zod_score += 0.5  # neutral
+        zod_score += 0.5  # neutral
     
     # Amp exact zodiac in karmic years
     karmic_years = [3, 7, 8, 11, 22, 33]  # Added 8
     if year_num in karmic_years:
-    if team_zod == year_zod:
-    zod_score += 2  # Extra amp for team exact
-    if country_zod == year_zod:
-    zod_score += 2  # Extra amp for country exact
+        if team_zod == year_zod:
+            zod_score += 2  # Extra amp for team exact
+        if country_zod == year_zod:
+            zod_score += 2  # Extra amp for country exact
     
     # Zodiac history upgrade (amped for multiples)
     if year_zod in zodiac_history and team in zodiac_history[year_zod]:
-    win_count = zodiac_history[year_zod].count(team)
-    zod_score += 3 * win_count * 1.5 if win_count > 1 else 3  # Amp for multiples
+        win_count = zodiac_history[year_zod].count(team)
+        zod_score += 3 * win_count * 1.5 if win_count > 1 else 3  # Amp for multiples
     
     total_score = num_score + zod_score
     
     # Extra weight to numerology if karmic/master year (increased weight)
     if year_num in karmic_years:
-    total_score += num_score * 1.0  # Increased from 0.5
+        total_score += num_score * 1.0  # Increased from 0.5
+    
+    # Maturity Cycle Boost (Sri Lanka 1996 rule)
+    years_since_country = year - country_year
+    mat_num = get_numerology(years_since_country)
+    if mat_num == 3 and year_num in karmic_years:
+        total_score += 5
     
     # Host boost if no double penalty (scaled for co-hosts)
     if host and not double_penalty:
-    total_score += 2 / len(hosts) if len(hosts) > 1 else 2  # Scale for co-hosts
+        hosts = []  # This will be passed from main function
+        total_score += 2 / len(hosts) if len(hosts) > 1 else 2  # Scale for co-hosts
     
     # Disqualify if double penalty unless history override
     if double_penalty and team_num != year_num:
-    if team in history_overrides and year_num in history_overrides[team]:
-    win_count = history_overrides[team].count(year_num)
-    total_score += 3 / win_count if win_count > 1 else 3  # Scaled down for multiples
-    else:
-    total_score = -float('inf')
+        if team in history_overrides and year_num in history_overrides[team]:
+            win_count = history_overrides[team].count(year_num)
+            total_score += 3 / win_count if win_count > 1 else 3  # Scaled down for multiples
+        else:
+            total_score = -float('inf')
     
     # Form boost (lower rank = higher boost, reduced in karmic years)
     form_boost = (21 - form_rank) / 5
     if year_num in karmic_years:
-    form_boost /= 2  # Reduced impact in karmic years
+        form_boost /= 2  # Reduced impact in karmic years
     total_score += form_boost
     
     # Amp form for #1 in endurance years
     if year_num == 8 and form_rank == 1:
-    total_score += 1
+        total_score += 1
     
     # Underdog boost if selected and karmic year
     if is_underdog and year_num in karmic_years:
-    total_score += 2
+        total_score += 2
+    
+    # Enhanced Underdog Boost in Matching Zodiac Years (Sri Lanka 1996 rule)
+    if is_underdog and country_zod == year_zod and year_num in karmic_years:
+        total_score += 1
+    
+    # PAKISTAN 1992 RULES
+    # Rule A: Karmic Match Boost
+    if country_num == year_num and year_num in karmic_years:
+        total_score += 4
+    
+    # Rule B: Monkey-Year Underdog Amp
+    if year_zod == "Monkey" and is_underdog and team_zod in ["Dragon", "Snake"] and team in zodiac_history.get(year_zod, []):
+        total_score += 3
+    
+    # Rule C: Relaxed Penalty for Masters
+    if double_penalty and year_num in karmic_years and country_num == year_num:
+        total_score += 1
+    
+    # Rule D: Extra Underdog Karmic Transformation (Pakistan 1992 specific)
+    if is_underdog and country_num == year_num and year_num in karmic_years and team_num in enemy_nums.get(year_num, []):
+        total_score += 3  # Extra boost for underdogs with enemy team numbers but karmic country match
     
     return total_score
 
@@ -339,27 +366,42 @@ if st.button("Predict Winner"):
     scores = {}
     hosts = [h.strip().lower() for h in host.split(",") if h.strip()]
     for team in participants:
-    is_host = team.lower() in hosts
-    is_underdog = team in underdog_teams
-    score = calculate_score(team, year_num, year_zod, host=is_host, form_rank=form_ranks[team], is_underdog=is_underdog)
-    if score is not None:
-    scores[team] = score
+        is_host = team.lower() in hosts
+        is_underdog = team in underdog_teams
+        score = calculate_score(team, year_num, year_zod, year, host=is_host, form_rank=form_ranks[team], is_underdog=is_underdog)
+        if score is not None:
+            scores[team] = score
     
     if scores:
-    # Weak fit elimination: Filter out ranks >10 or -inf (tightened threshold for better alignment)
-    filtered_scores = {team: score for team, score in scores.items() if score != -float('inf') and form_ranks[team] <= (5 if year_num == 8 else 6)}
-    if filtered_scores:
-    predicted_winner = max(filtered_scores, key=filtered_scores.get)
-    st.write(f"Predicted Winner: {predicted_winner}")
-    st.write("Filtered Scores (higher is better; weak fits eliminated):")
-    for team, score in sorted(filtered_scores.items(), key=lambda x: x[1], reverse=True):
-    st.write(f"{team}: {score}")
+        # Apply filtering logic based on year type and special conditions
+        karmic_years = [3, 7, 8, 11, 22, 33]
+        threshold = 8 if year_num == 3 else (5 if year_num == 8 else 6)
+        
+        filtered_scores = {}
+        for team, score in scores.items():
+            data = teams_data[team]
+            country_year = data["country"]
+            country_num = get_numerology(country_year)
+            country_zod = get_zodiac(country_year)
+            has_zodiac_history = team in zodiac_history.get(year_zod, [])
+            special_inclusion = year_num in karmic_years and country_zod == year_zod and has_zodiac_history
+            karmic_match = country_num == year_num and year_num in karmic_years
+            
+            if score != -float('inf') and (form_ranks[team] <= threshold or special_inclusion or karmic_match):
+                filtered_scores[team] = score
+        
+        if filtered_scores:
+            predicted_winner = max(filtered_scores, key=filtered_scores.get)
+            st.write(f"Predicted Winner: {predicted_winner}")
+            st.write("Filtered Scores (higher is better; weak fits eliminated):")
+            for team, score in sorted(filtered_scores.items(), key=lambda x: x[1], reverse=True):
+                st.write(f"{team}: {score}")
+        else:
+            st.write("No strong contenders after filtering; fallback to all scores.")
+            predicted_winner = max(scores, key=scores.get)
+            st.write(f"Predicted Winner: {predicted_winner}")
+            st.write("All Scores:")
+            for team, score in sorted(scores.items(), key=lambda x: x[1], reverse=True):
+                st.write(f"{team}: {score}")
     else:
-    st.write("No strong contenders after filtering; fallback to all scores.")
-    predicted_winner = max(scores, key=scores.get)
-    st.write(f"Predicted Winner: {predicted_winner}")
-    st.write("All Scores:")
-    for team, score in sorted(scores.items(), key=lambda x: x[1], reverse=True):
-    st.write(f"{team}: {score}")
-    else:
-    st.write("No valid teams provided.")
+        st.write("No valid teams provided.")
