@@ -122,32 +122,25 @@ def fetch_rankings(year, format_type):
     icc_format = format_map.get(format_type, "odi")
     
     if year >= 2025:  # Current or future: Scrape ICC
-        try:
-            url = f"https://www.icc-cricket.com/rankings/team-rankings/mens/{icc_format}"
-            headers = {'User-Agent': 'Mozilla/5.0'}
-            response = requests.get(url, headers=headers)
-            if response.status_code == 200:
-                soup = BeautifulSoup(response.text, 'html.parser')
-                rankings = {}
-                table = soup.find('table', class_='table rankings-table')
-                if table:
-                    rows = table.find_all('tr')[1:15]  # Top ~12
-                    for row in rows:
-                        cols = row.find_all('td')
-                        if len(cols) >= 2:
-                            position = int(cols[0].text.strip())
-                            team = cols[1].text.strip()
-                            rankings[team] = position
-                    return rankings
-                else:
-                    st.warning("Could not fetch current rankings; using defaults.")
-                    return {}
+        url = f"https://www.icc-cricket.com/rankings/team-rankings/mens/{icc_format}"
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            rankings = {}
+            table = soup.find('table', class_='table rankings-table')
+            if table:
+                rows = table.find_all('tr')[1:15]  # Top ~12
+                for row in rows:
+                    cols = row.find_all('td')
+                    if len(cols) >= 2:
+                        position = int(cols[0].text.strip())
+                        team = cols[1].text.strip()
+                        rankings[team] = position
+                return rankings
             else:
                 st.warning("Could not fetch current rankings; using defaults.")
                 return {}
-        except Exception as e:
-            st.warning(f"Error fetching rankings: {e}. Using defaults.")
-            return {}
     
     else:  # Historical: Expanded dict for ODIs 1992-2025 (top 10 where available; approximated pre-2002)
         historical = {
@@ -209,7 +202,7 @@ def get_group(animal):
             return members
     return []
 
-def calculate_score(team, year_num, year_zod, year, host=False, form_rank=10, is_underdog=False):
+def calculate_score(team, year_num, year_zod, host=False, form_rank=10, is_underdog=False):
     if team not in teams_data:
         return None
     
@@ -225,102 +218,90 @@ def calculate_score(team, year_num, year_zod, year, host=False, form_rank=10, is
     # Numerology score (team weighted more)
     num_score = 0
     if team_num in friendly.get(year_num, []):
-        num_score += 2
+    num_score += 2
     elif team_num in enemy_nums.get(year_num, []):
-        num_score -= 2
+    num_score -= 2
     else:
-        num_score += 0.5
+    num_score += 0.5
     
     if country_num in friendly.get(year_num, []):
-        num_score += 1
+    num_score += 1
     elif country_num in enemy_nums.get(year_num, []):
-        num_score -= 1
+    num_score -= 1
     else:
-        num_score += 0.25
+    num_score += 0.25
     
     # Check double penalty
-    double_penalty = team_num in enemy_nums.get(year_num, []) and country_num in enemy_nums.get(year_num, [])
+    double_penalty = team_num in enemy_nums.get(year_num, [] ) and country_num in enemy_nums.get(year_num, [])
     
     # Zodiac score (team weighted more, reduced for country exact)
     zod_score = 0
     if team_zod == year_zod:
-        zod_score += 3
+    zod_score += 3
     if secret_friends.get(team_zod) == year_zod:
-        zod_score += 3
+    zod_score += 3
     if team_zod in get_group(year_zod) and team_zod != year_zod:
-        zod_score += 2
+    zod_score += 2
     if enemies.get(team_zod) == year_zod:
-        zod_score -= 3
+    zod_score -= 3
     else:
-        zod_score += 1  # neutral
+    zod_score += 1  # neutral
     
     if country_zod == year_zod:
-        zod_score += 0.5  # Reduced from 1
+    zod_score += 0.5  # Reduced from 1
     if secret_friends.get(country_zod) == year_zod:
-        zod_score += 1.5
+    zod_score += 1.5
     if country_zod in get_group(year_zod) and country_zod != year_zod:
-        zod_score += 1
+    zod_score += 1
     if enemies.get(country_zod) == year_zod:
-        zod_score -= 1.5
+    zod_score -= 1.5
     else:
-        zod_score += 0.5  # neutral
+    zod_score += 0.5  # neutral
     
     # Amp exact zodiac in karmic years
     karmic_years = [3, 7, 8, 11, 22, 33]  # Added 8
     if year_num in karmic_years:
-        if team_zod == year_zod:
-            zod_score += 2  # Extra amp for team exact
-        if country_zod == year_zod:
-            zod_score += 2  # Extra amp for country exact
+    if team_zod == year_zod:
+    zod_score += 2  # Extra amp for team exact
+    if country_zod == year_zod:
+    zod_score += 2  # Extra amp for country exact
     
     # Zodiac history upgrade (amped for multiples)
     if year_zod in zodiac_history and team in zodiac_history[year_zod]:
-        win_count = zodiac_history[year_zod].count(team)
-        zod_score += 3 * win_count * 1.5 if win_count > 1 else 3  # Amp for multiples
+    win_count = zodiac_history[year_zod].count(team)
+    zod_score += 3 * win_count * 1.5 if win_count > 1 else 3  # Amp for multiples
     
     total_score = num_score + zod_score
     
     # Extra weight to numerology if karmic/master year (increased weight)
     if year_num in karmic_years:
-        total_score += num_score * 1.0  # Increased from 0.5
-    
-    # New Rule 2: Maturity Cycle Boost
-    years_since_country = year - data["country"]
-    mat_num = get_numerology(years_since_country)
-    if mat_num == 3 and year_num in karmic_years:
-        total_score += 5
+    total_score += num_score * 1.0  # Increased from 0.5
     
     # Host boost if no double penalty (scaled for co-hosts)
     if host and not double_penalty:
-        # Need to define hosts variable in scope
-        hosts = []  # This will be passed from main function
-        total_score += 2 / len(hosts) if len(hosts) > 1 else 2  # Scale for co-hosts
+    total_score += 2 / len(hosts) if len(hosts) > 1 else 2  # Scale for co-hosts
     
     # Disqualify if double penalty unless history override
     if double_penalty and team_num != year_num:
-        if team in history_overrides and year_num in history_overrides[team]:
-            win_count = history_overrides[team].count(year_num)
-            total_score += 3 / win_count if win_count > 1 else 3  # Scaled down for multiples
-        else:
-            total_score = -float('inf')
+    if team in history_overrides and year_num in history_overrides[team]:
+    win_count = history_overrides[team].count(year_num)
+    total_score += 3 / win_count if win_count > 1 else 3  # Scaled down for multiples
+    else:
+    total_score = -float('inf')
     
     # Form boost (lower rank = higher boost, reduced in karmic years)
     form_boost = (21 - form_rank) / 5
     if year_num in karmic_years:
-        form_boost /= 2  # Reduced impact in karmic years
+    form_boost /= 2  # Reduced impact in karmic years
     total_score += form_boost
     
     # Amp form for #1 in endurance years
     if year_num == 8 and form_rank == 1:
-        total_score += 1
+    total_score += 1
     
     # Underdog boost if selected and karmic year
     if is_underdog and year_num in karmic_years:
-        total_score += 2
-    
-    # New Rule 3: Enhanced Underdog Boost in Matching Zodiac Years
-    if is_underdog and country_zod == year_zod and year_num in karmic_years:
-        total_score += 1  # Additional +1 on top of existing +2, making it +3 total
+    total_score += 2
     
     return total_score
 
@@ -358,42 +339,27 @@ if st.button("Predict Winner"):
     scores = {}
     hosts = [h.strip().lower() for h in host.split(",") if h.strip()]
     for team in participants:
-        is_host = team.lower() in hosts
-        is_underdog = team in underdog_teams
-        score = calculate_score(team, year_num, year_zod, year, host=is_host, form_rank=form_ranks[team], is_underdog=is_underdog)
-        if score is not None:
-            scores[team] = score
+    is_host = team.lower() in hosts
+    is_underdog = team in underdog_teams
+    score = calculate_score(team, year_num, year_zod, host=is_host, form_rank=form_ranks[team], is_underdog=is_underdog)
+    if score is not None:
+    scores[team] = score
     
     if scores:
-        # Karmic years definition
-        karmic_years = [3, 7, 8, 11, 22, 33]
-        
-        # Updated threshold logic
-        threshold = 8 if year_num == 3 else (5 if year_num == 8 else 6)
-        
-        # Updated filtered_scores with New Rule 1
-        filtered_scores = {}
-        for team, score in scores.items():
-            data = teams_data[team]
-            country_year = data["country"]
-            country_zod = get_zodiac(country_year)
-            has_zodiac_history = team in zodiac_history.get(year_zod, [])
-            special_inclusion = year_num in karmic_years and country_zod == year_zod and has_zodiac_history
-            if score != -float('inf') and (form_ranks[team] <= threshold or special_inclusion):
-                filtered_scores[team] = score
-        
-        if filtered_scores:
-            predicted_winner = max(filtered_scores, key=filtered_scores.get)
-            st.write(f"Predicted Winner: {predicted_winner}")
-            st.write("Filtered Scores (higher is better; weak fits eliminated):")
-            for team, score in sorted(filtered_scores.items(), key=lambda x: x[1], reverse=True):
-                st.write(f"{team}: {score}")
-        else:
-            st.write("No strong contenders after filtering; fallback to all scores.")
-            predicted_winner = max(scores, key=scores.get)
-            st.write(f"Predicted Winner: {predicted_winner}")
-            st.write("All Scores:")
-            for team, score in sorted(scores.items(), key=lambda x: x[1], reverse=True):
-                st.write(f"{team}: {score}")
+    # Weak fit elimination: Filter out ranks >10 or -inf (tightened threshold for better alignment)
+    filtered_scores = {team: score for team, score in scores.items() if score != -float('inf') and form_ranks[team] <= (5 if year_num == 8 else 6)}
+    if filtered_scores:
+    predicted_winner = max(filtered_scores, key=filtered_scores.get)
+    st.write(f"Predicted Winner: {predicted_winner}")
+    st.write("Filtered Scores (higher is better; weak fits eliminated):")
+    for team, score in sorted(filtered_scores.items(), key=lambda x: x[1], reverse=True):
+    st.write(f"{team}: {score}")
     else:
-        st.write("No valid teams provided.")
+    st.write("No strong contenders after filtering; fallback to all scores.")
+    predicted_winner = max(scores, key=scores.get)
+    st.write(f"Predicted Winner: {predicted_winner}")
+    st.write("All Scores:")
+    for team, score in sorted(scores.items(), key=lambda x: x[1], reverse=True):
+    st.write(f"{team}: {score}")
+    else:
+    st.write("No valid teams provided.")
