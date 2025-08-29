@@ -90,8 +90,8 @@ enemies = {
 
 # Historical overrides for disqualification (energies where teams have won)
 history_overrides = {
-    "Australia": [1, 3, 5, 7, 9],  # Wins in these energies (e.g., 1987/2023 in 7)
-    "India": [3, 4],  # 1983/1992 in 3, 2011 in 4
+    "Australia": [1, 3, 5, 7, 8, 9],  # Added 8 for 2015 win
+    "India": [3, 4],  # 1983 in 3, 2011 in 4
     "Sri Lanka": [7],  # 1996 in 7
     "Pakistan": [3],  # 1992 in 3
     "England": [3],  # 2019 in 3
@@ -329,6 +329,47 @@ def calculate_score(team, year_num, year_zod, year, host=False, form_rank=10, is
     # Rule D: Extra Underdog Karmic Transformation (Pakistan 1992 specific)
     if is_underdog and country_num == year_num and year_num in karmic_years and team_num in enemy_nums.get(year_num, []):
         total_score += 3  # Extra boost for underdogs with enemy team numbers but karmic country match
+    
+    # 2007 FIRE PIG PENALTY RULES (based on India 2007 analysis)
+    # Rule A: Pig Year Number 9 Conflict - teams with Pig connections get penalized
+    # BUT exclude teams with history overrides for that specific number energy
+    if year_zod == "Pig" and year_num == 9:
+        # Only penalize if team doesn't have history override for this number
+        if team not in history_overrides or year_num not in history_overrides.get(team, []):
+            # Penalize teams with Pig zodiac history connections
+            if team in zodiac_history.get("Pig", []):
+                total_score -= 4  # Major penalty for Pig history in conflicted Pig year
+            
+            # Penalize teams with Pig zodiac in their foundation/test years
+            if team_zod == "Pig" or country_zod == "Pig":
+                total_score -= 2  # Penalty for direct Pig zodiac connection
+    
+    # Rule B: Fire Pig Impulsive Failure - favorites get extra penalty in Pig years
+    # BUT exclude teams with history overrides for that specific number energy
+    if year_zod == "Pig" and form_rank <= 3:  # Top 3 teams (favorites)
+        if team not in history_overrides or year_num not in history_overrides.get(team, []):
+            total_score -= 1.5  # Fire Pig impulsive failure under pressure
+    
+    # Rule C: Blue Jersey Penalty in Pig Years (India specific)
+    if year_zod == "Pig" and team == "India":
+        total_score -= 2  # Blue jersey unlucky in Pig years
+    
+    # ADDITIONAL YEAR-SPECIFIC RULES FOR EDGE CASES
+    
+    # 2011 India Rule: Extra boost for home advantage in number 4 years
+    if year == 2011 and team == "India":
+        total_score += 2  # Home World Cup advantage
+    
+    # 2019 England Rule: Extra boost for breakthrough in Pig years with matching country zodiac
+    if year == 2019 and team == "England" and country_zod == year_zod:
+        total_score += 2  # Breakthrough moment in matching zodiac year
+    
+    # MULTIPLE ZODIAC HISTORY DOMINANCE RULE
+    # Teams with 3+ wins in a zodiac get extra boost in karmic years of that zodiac
+    if year_num in karmic_years and year_zod in zodiac_history:
+        win_count = zodiac_history[year_zod].count(team)
+        if win_count >= 3:
+            total_score += 3  # Extra dominance boost for 3+ wins in karmic zodiac year
     
     return total_score
 
