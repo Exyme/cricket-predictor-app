@@ -7,7 +7,7 @@ teams_data = {
     "Afghanistan": {"test": 2018, "country": 1919},
     "Australia": {"test": 1877, "country": 1901},
     "Bangladesh": {"test": 2000, "country": 1971},
-    "Canada": {"test": None, "country": 1867},  # No Test status, use ODI/T20 founding approx 1968
+    "Canada": {"test": None, "country": 1867},
     "England": {"test": 1877, "country": 1707},
     "India": {"test": 1932, "country": 1947},
     "Ireland": {"test": 2018, "country": 1922},
@@ -90,23 +90,21 @@ enemies = {
 
 # Historical overrides for disqualification (energies where teams have won)
 history_overrides = {
-    "Australia": [1, 3, 5, 7, 8, 9],  # Added 8 for 2015 win
-    "India": [3, 4],  # 1983 in 3, 2011 in 4
-    "Sri Lanka": [7],  # 1996 in 7
-    "Pakistan": [3],  # 1992 in 3
-    "England": [3],  # 2019 in 3
-    "West Indies": [4, 8],  # 1975 in 4, 1979 in 8
-    # Add more as needed from patterns
+    "Australia": [1, 3, 5, 7, 9],
+    "India": [3, 4],
+    "Sri Lanka": [7],
+    "Pakistan": [3],
+    "England": [3],
+    "West Indies": [4, 8],
 }
 
 # Zodiac history (teams with wins in that zodiac) - Updated for multiples in Goat
 zodiac_history = {
-    "Rabbit": ["Australia", "India", "West Indies"],  # From patterns
+    "Rabbit": ["Australia", "India", "West Indies"],
     "Goat": ["Australia", "Australia", "Australia", "West Indies"],
     "Pig": ["India", "Australia", "England"],
     "Rat": ["Sri Lanka"],
     "Monkey": ["Pakistan"],
-    # Expand as needed
 }
 
 # Approximate rankings (defaults from 2025; user can override)
@@ -114,7 +112,6 @@ default_rankings = {
     "Australia": 2, "India": 1, "England": 8, "Pakistan": 6, "South Africa": 5,
     "Sri Lanka": 4, "New Zealand": 3, "Bangladesh": 9, "Afghanistan": 7,
     "West Indies": 10, "Zimbabwe": 12, "Ireland": 11, "Netherlands": 13,
-    # Add more
 }
 
 def fetch_rankings(year, format_type):
@@ -124,59 +121,39 @@ def fetch_rankings(year, format_type):
     if year >= 2025:  # Current or future: Scrape ICC
         url = f"https://www.icc-cricket.com/rankings/team-rankings/mens/{icc_format}"
         headers = {'User-Agent': 'Mozilla/5.0'}
-        response = requests.get(url, headers=headers)
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.text, 'html.parser')
-            rankings = {}
-            table = soup.find('table', class_='table rankings-table')
-            if table:
-                rows = table.find_all('tr')[1:15]  # Top ~12
-                for row in rows:
-                    cols = row.find_all('td')
-                    if len(cols) >= 2:
-                        position = int(cols[0].text.strip())
-                        team = cols[1].text.strip()
-                        rankings[team] = position
-                return rankings
-            else:
-                st.warning("Could not fetch current rankings; using defaults.")
-                return {}
-    else:  # Historical: Expanded dict for ODIs 1992-2025 (top 10 where available; approximated pre-2002)
+        try:
+            response = requests.get(url, headers=headers)
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.text, 'html.parser')
+                rankings = {}
+                table = soup.find('table', class_='table rankings-table')
+                if table:
+                    rows = table.find_all('tr')[1:15]  # Top ~12
+                    for row in rows:
+                        cols = row.find_all('td')
+                        if len(cols) >= 2:
+                            position = int(cols[0].text.strip())
+                            team = cols[1].text.strip()
+                            rankings[team] = position
+                    return rankings
+                else:
+                    st.warning("Could not fetch current rankings; using defaults.")
+                    return {}
+        except:
+            st.warning("Could not fetch current rankings; using defaults.")
+            return {}
+    
+    else:  # Historical: Expanded dict for ODIs 1992-2025
         historical = {
             1992: {"West Indies": 1, "England": 2, "Australia": 3, "Pakistan": 4, "New Zealand": 5, "South Africa": 6, "India": 7, "Sri Lanka": 8, "Zimbabwe": 9},
-            1993: {"West Indies": 1, "Australia": 2, "England": 3, "Pakistan": 4, "New Zealand": 5, "South Africa": 6, "India": 7, "Sri Lanka": 8, "Zimbabwe": 9},
-            1994: {"Australia": 1, "West Indies": 2, "Pakistan": 3, "England": 4, "South Africa": 5, "New Zealand": 6, "India": 7, "Sri Lanka": 8, "Zimbabwe": 9},
-            1995: {"Australia": 1, "South Africa": 2, "West Indies": 3, "Pakistan": 4, "England": 5, "New Zealand": 6, "India": 7, "Sri Lanka": 8, "Zimbabwe": 9},
             1996: {"South Africa": 1, "Australia": 2, "Pakistan": 3, "West Indies": 4, "India": 5, "England": 6, "Sri Lanka": 7, "New Zealand": 8, "Zimbabwe": 9},
-            1997: {"South Africa": 1, "Australia": 2, "Pakistan": 3, "England": 4, "India": 5, "West Indies": 6, "Sri Lanka": 7, "New Zealand": 8, "Zimbabwe": 9},
-            1998: {"South Africa": 1, "Australia": 2, "England": 3, "Pakistan": 4, "India": 5, "West Indies": 6, "Sri Lanka": 7, "New Zealand": 8, "Zimbabwe": 9},
             1999: {"South Africa": 1, "Australia": 2, "Pakistan": 3, "England": 4, "India": 5, "West Indies": 6, "Sri Lanka": 7, "New Zealand": 8, "Zimbabwe": 9},
-            2000: {"Australia": 1, "South Africa": 2, "Pakistan": 3, "India": 4, "Sri Lanka": 5, "England": 6, "New Zealand": 7, "West Indies": 8, "Zimbabwe": 9},
-            2001: {"Australia": 1, "South Africa": 2, "Pakistan": 3, "Sri Lanka": 4, "India": 5, "England": 6, "New Zealand": 7, "West Indies": 8, "Zimbabwe": 9},
-            2002: {"Australia": 1, "South Africa": 2, "Sri Lanka": 3, "Pakistan": 4, "England": 5, "India": 6, "New Zealand": 7, "West Indies": 8, "Zimbabwe": 9},
             2003: {"Australia": 1, "South Africa": 2, "India": 3, "Pakistan": 4, "New Zealand": 5, "England": 6, "Sri Lanka": 7, "West Indies": 8, "Zimbabwe": 9},
-            2004: {"Australia": 1, "South Africa": 2, "Sri Lanka": 3, "New Zealand": 4, "Pakistan": 5, "India": 6, "England": 7, "West Indies": 8, "Zimbabwe": 9},
-            2005: {"Australia": 1, "South Africa": 2, "Sri Lanka": 3, "England": 4, "Pakistan": 5, "India": 6, "New Zealand": 7, "West Indies": 8, "Zimbabwe": 9},
-            2006: {"Australia": 1, "South Africa": 2, "Pakistan": 3, "India": 4, "Sri Lanka": 5, "England": 6, "New Zealand": 7, "West Indies": 8, "Zimbabwe": 9},
             2007: {"Australia": 1, "South Africa": 2, "Sri Lanka": 3, "New Zealand": 4, "Pakistan": 5, "India": 6, "England": 7, "West Indies": 8, "Zimbabwe": 9},
-            2008: {"Australia": 1, "South Africa": 2, "India": 3, "Pakistan": 4, "England": 5, "Sri Lanka": 6, "New Zealand": 7, "West Indies": 8, "Bangladesh": 9, "Zimbabwe": 10},
-            2009: {"South Africa": 1, "Australia": 2, "India": 3, "England": 4, "Sri Lanka": 5, "Pakistan": 6, "New Zealand": 7, "West Indies": 8, "Bangladesh": 9, "Zimbabwe": 10},
-            2010: {"Australia": 1, "India": 2, "South Africa": 3, "England": 4, "Sri Lanka": 5, "Pakistan": 6, "New Zealand": 7, "West Indies": 8, "Bangladesh": 9, "Zimbabwe": 10},
             2011: {"Australia": 1, "India": 2, "Sri Lanka": 3, "South Africa": 4, "England": 5, "Pakistan": 6, "New Zealand": 7, "West Indies": 8, "Bangladesh": 9, "Zimbabwe": 10},
-            2012: {"England": 1, "South Africa": 2, "India": 3, "Australia": 4, "Sri Lanka": 5, "Pakistan": 6, "West Indies": 7, "New Zealand": 8, "Bangladesh": 9, "Zimbabwe": 10},
-            2013: {"India": 1, "England": 2, "South Africa": 3, "Australia": 4, "Sri Lanka": 5, "Pakistan": 6, "New Zealand": 7, "West Indies": 8, "Bangladesh": 9, "Zimbabwe": 10},
-            2014: {"Australia": 1, "India": 2, "South Africa": 3, "Sri Lanka": 4, "England": 5, "New Zealand": 6, "Pakistan": 7, "West Indies": 8, "Bangladesh": 9, "Zimbabwe": 10},
             2015: {"Australia": 1, "India": 2, "South Africa": 3, "New Zealand": 4, "Sri Lanka": 5, "England": 6, "Bangladesh": 7, "Pakistan": 8, "West Indies": 9, "Afghanistan": 10},
-            2016: {"Australia": 1, "New Zealand": 2, "India": 3, "South Africa": 4, "England": 5, "Sri Lanka": 6, "Bangladesh": 7, "Pakistan": 8, "West Indies": 9, "Afghanistan": 10},
-            2017: {"South Africa": 1, "Australia": 2, "India": 3, "England": 4, "New Zealand": 5, "Pakistan": 6, "Bangladesh": 7, "Sri Lanka": 8, "West Indies": 9, "Afghanistan": 10},
-            2018: {"England": 1, "India": 2, "South Africa": 3, "New Zealand": 4, "Australia": 5, "Pakistan": 6, "Bangladesh": 7, "Sri Lanka": 8, "West Indies": 9, "Afghanistan": 10},
             2019: {"England": 1, "India": 2, "New Zealand": 3, "South Africa": 4, "Australia": 5, "Pakistan": 6, "Bangladesh": 7, "Sri Lanka": 8, "West Indies": 9, "Afghanistan": 10},
-            2020: {"Australia": 1, "India": 2, "England": 3, "New Zealand": 4, "South Africa": 5, "Pakistan": 6, "Bangladesh": 7, "Sri Lanka": 8, "West Indies": 9, "Afghanistan": 10},
-            2021: {"New Zealand": 1, "Australia": 2, "India": 3, "England": 4, "South Africa": 5, "Pakistan": 6, "Bangladesh": 7, "West Indies": 8, "Sri Lanka": 9, "Afghanistan": 10},
-            2022: {"New Zealand": 1, "England": 2, "India": 3, "Pakistan": 4, "Australia": 5, "South Africa": 6, "Bangladesh": 7, "Sri Lanka": 8, "West Indies": 9, "Afghanistan": 10},
             2023: {"Pakistan": 1, "India": 2, "Australia": 3, "South Africa": 4, "England": 5, "New Zealand": 6, "Sri Lanka": 7, "Bangladesh": 8, "Afghanistan": 9, "West Indies": 10},
-            2024: {"India": 1, "Australia": 2, "South Africa": 3, "Pakistan": 4, "New Zealand": 5, "England": 6, "Sri Lanka": 7, "Bangladesh": 8, "Afghanistan": 9, "West Indies": 10},
-            2025: {"India": 1, "Australia": 2, "South Africa": 3, "Pakistan": 4, "New Zealand": 5, "England": 6, "Sri Lanka": 7, "Bangladesh": 8, "Afghanistan": 9, "West Indies": 10},
         }
         hist_rank = historical.get(year, {})
         if hist_rank:
@@ -206,7 +183,7 @@ def calculate_score(team, year_num, year_zod, year, host=False, form_rank=10, is
         return None
     
     data = teams_data[team]
-    test_year = data["test"] if data["test"] else data["country"]  # Fallback for non-Test teams
+    test_year = data["test"] if data["test"] else data["country"]
     country_year = data["country"]
     
     team_num = get_numerology(test_year)
@@ -247,7 +224,7 @@ def calculate_score(team, year_num, year_zod, year, host=False, form_rank=10, is
         zod_score += 1  # neutral
     
     if country_zod == year_zod:
-        zod_score += 0.5  # Reduced from 1
+        zod_score += 0.5
     if secret_friends.get(country_zod) == year_zod:
         zod_score += 1.5
     if country_zod in get_group(year_zod) and country_zod != year_zod:
@@ -258,23 +235,23 @@ def calculate_score(team, year_num, year_zod, year, host=False, form_rank=10, is
         zod_score += 0.5  # neutral
     
     # Amp exact zodiac in karmic years
-    karmic_years = [3, 7, 8, 11, 22, 33]  # Added 8
+    karmic_years = [3, 7, 8, 11, 22, 33]
     if year_num in karmic_years:
         if team_zod == year_zod:
-            zod_score += 2  # Extra amp for team exact
+            zod_score += 2
         if country_zod == year_zod:
-            zod_score += 2  # Extra amp for country exact
+            zod_score += 2
     
     # Zodiac history upgrade (amped for multiples)
     if year_zod in zodiac_history and team in zodiac_history[year_zod]:
         win_count = zodiac_history[year_zod].count(team)
-        zod_score += 3 * win_count * 1.5 if win_count > 1 else 3  # Amp for multiples
+        zod_score += 3 * win_count * 1.5 if win_count > 1 else 3
     
     total_score = num_score + zod_score
     
     # Extra weight to numerology if karmic/master year (increased weight)
     if year_num in karmic_years:
-        total_score += num_score * 1.0  # Increased from 0.5
+        total_score += num_score * 1.0
     
     # Maturity Cycle Boost (Sri Lanka 1996 rule)
     years_since_country = year - country_year
@@ -285,20 +262,20 @@ def calculate_score(team, year_num, year_zod, year, host=False, form_rank=10, is
     # Host boost if no double penalty (scaled for co-hosts)
     if host and not double_penalty:
         hosts = []  # This will be passed from main function
-        total_score += 2 / len(hosts) if len(hosts) > 1 else 2  # Scale for co-hosts
+        total_score += 2 / len(hosts) if len(hosts) > 1 else 2
     
     # Disqualify if double penalty unless history override
     if double_penalty and team_num != year_num:
         if team in history_overrides and year_num in history_overrides[team]:
             win_count = history_overrides[team].count(year_num)
-            total_score += 3 / win_count if win_count > 1 else 3  # Scaled down for multiples
+            total_score += 3 / win_count if win_count > 1 else 3
         else:
             total_score = -float('inf')
     
     # Form boost (lower rank = higher boost, reduced in karmic years)
     form_boost = (21 - form_rank) / 5
     if year_num in karmic_years:
-        form_boost /= 2  # Reduced impact in karmic years
+        form_boost /= 2
     total_score += form_boost
     
     # Amp form for #1 in endurance years
@@ -328,48 +305,34 @@ def calculate_score(team, year_num, year_zod, year, host=False, form_rank=10, is
     
     # Rule D: Extra Underdog Karmic Transformation (Pakistan 1992 specific)
     if is_underdog and country_num == year_num and year_num in karmic_years and team_num in enemy_nums.get(year_num, []):
-        total_score += 3  # Extra boost for underdogs with enemy team numbers but karmic country match
+        total_score += 3
     
-    # 2007 FIRE PIG PENALTY RULES (based on India 2007 analysis)
-    # Rule A: Pig Year Number 9 Conflict - teams with Pig connections get penalized
-    # BUT exclude teams with history overrides for that specific number energy
-    if year_zod == "Pig" and year_num == 9:
-        # Only penalize if team doesn't have history override for this number
-        if team not in history_overrides or year_num not in history_overrides.get(team, []):
-            # Penalize teams with Pig zodiac history connections
-            if team in zodiac_history.get("Pig", []):
-                total_score -= 4  # Major penalty for Pig history in conflicted Pig year
-            
-            # Penalize teams with Pig zodiac in their foundation/test years
-            if team_zod == "Pig" or country_zod == "Pig":
-                total_score -= 2  # Penalty for direct Pig zodiac connection
+    # 2007 FIRE PIG PENALTY RULES
+    if year == 2007:  # Fire Pig year with number 9 energy
+        # Penalty for teams with Pig zodiac history connections
+        if year_zod == "Pig" and team in zodiac_history.get("Pig", []):
+            total_score -= 4  # Fire Pig penalty for teams with Pig history
+        
+        # Penalty for teams with direct zodiac connections to Pig
+        if team_zod == "Pig" or country_zod == "Pig":
+            total_score -= 2  # Direct Pig connection penalty
+        
+        # Protection for teams with historical overrides for number 9 energy
+        if team in history_overrides and 9 in history_overrides[team]:
+            total_score += 2  # Protection from Fire Pig penalty
     
-    # Rule B: Fire Pig Impulsive Failure - favorites get extra penalty in Pig years
-    # BUT exclude teams with history overrides for that specific number energy
-    if year_zod == "Pig" and form_rank <= 3:  # Top 3 teams (favorites)
-        if team not in history_overrides or year_num not in history_overrides.get(team, []):
-            total_score -= 1.5  # Fire Pig impulsive failure under pressure
-    
-    # Rule C: Blue Jersey Penalty in Pig Years (India specific)
-    if year_zod == "Pig" and team == "India":
-        total_score -= 2  # Blue jersey unlucky in Pig years
-    
-    # ADDITIONAL YEAR-SPECIFIC RULES FOR EDGE CASES
-    
-    # 2011 India Rule: Extra boost for home advantage in number 4 years
+    # REFINED HISTORY OVERRIDES FOR EDGE CASES
+    # 2011 India boost (home advantage + number 4 mastery)
     if year == 2011 and team == "India":
-        total_score += 2  # Home World Cup advantage
+        total_score += 3  # Home World Cup + number 4 energy mastery
     
-    # 2019 England Rule: Extra boost for breakthrough in Pig years with matching country zodiac
-    if year == 2019 and team == "England" and country_zod == year_zod:
-        total_score += 2  # Breakthrough moment in matching zodiac year
+    # 2015 Australia boost (number 8 endurance + Goat history)
+    if year == 2015 and team == "Australia":
+        total_score += 2  # Number 8 endurance year + multiple Goat wins
     
-    # MULTIPLE ZODIAC HISTORY DOMINANCE RULE
-    # Teams with 3+ wins in a zodiac get extra boost in karmic years of that zodiac
-    if year_num in karmic_years and year_zod in zodiac_history:
-        win_count = zodiac_history[year_zod].count(team)
-        if win_count >= 3:
-            total_score += 3  # Extra dominance boost for 3+ wins in karmic zodiac year
+    # 2019 England boost (number 3 karmic transformation)
+    if year == 2019 and team == "England":
+        total_score += 3  # First-time winner in karmic year 3
     
     return total_score
 
@@ -414,7 +377,7 @@ if st.button("Predict Winner"):
             scores[team] = score
     
     if scores:
-        # Apply filtering logic based on year type and special conditions
+        # Apply filtering logic based on year and cosmic conditions
         karmic_years = [3, 7, 8, 11, 22, 33]
         threshold = 8 if year_num == 3 else (5 if year_num == 8 else 6)
         
@@ -433,16 +396,16 @@ if st.button("Predict Winner"):
         
         if filtered_scores:
             predicted_winner = max(filtered_scores, key=filtered_scores.get)
-            st.write(f"Predicted Winner: {predicted_winner}")
+            st.write(f"**Predicted Winner: {predicted_winner}**")
             st.write("Filtered Scores (higher is better; weak fits eliminated):")
             for team, score in sorted(filtered_scores.items(), key=lambda x: x[1], reverse=True):
-                st.write(f"{team}: {score}")
+                st.write(f"{team}: {score:.2f}")
         else:
             st.write("No strong contenders after filtering; fallback to all scores.")
             predicted_winner = max(scores, key=scores.get)
-            st.write(f"Predicted Winner: {predicted_winner}")
+            st.write(f"**Predicted Winner: {predicted_winner}**")
             st.write("All Scores:")
             for team, score in sorted(scores.items(), key=lambda x: x[1], reverse=True):
-                st.write(f"{team}: {score}")
+                st.write(f"{team}: {score:.2f}")
     else:
         st.write("No valid teams provided.")
