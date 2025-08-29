@@ -122,25 +122,32 @@ def fetch_rankings(year, format_type):
     icc_format = format_map.get(format_type, "odi")
     
     if year >= 2025:  # Current or future: Scrape ICC
-    url = f"https://www.icc-cricket.com/rankings/team-rankings/mens/{icc_format}"
-    headers = {'User-Agent': 'Mozilla/5.0'}
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-    soup = BeautifulSoup(response.text, 'html.parser')
-    rankings = {}
-    table = soup.find('table', class_='table rankings-table')
-    if table:
-    rows = table.find_all('tr')[1:15]  # Top ~12
-    for row in rows:
-    cols = row.find_all('td')
-    if len(cols) >= 2:
-    position = int(cols[0].text.strip())
-    team = cols[1].text.strip()
-    rankings[team] = position
-    return rankings
-    else:
-    st.warning("Could not fetch current rankings; using defaults.")
-    return {}
+        try:
+            url = f"https://www.icc-cricket.com/rankings/team-rankings/mens/{icc_format}"
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            response = requests.get(url, headers=headers)
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.text, 'html.parser')
+                rankings = {}
+                table = soup.find('table', class_='table rankings-table')
+                if table:
+                    rows = table.find_all('tr')[1:15]  # Top ~12
+                    for row in rows:
+                        cols = row.find_all('td')
+                        if len(cols) >= 2:
+                            position = int(cols[0].text.strip())
+                            team = cols[1].text.strip()
+                            rankings[team] = position
+                    return rankings
+                else:
+                    st.warning("Could not fetch current rankings; using defaults.")
+                    return {}
+            else:
+                st.warning("Could not fetch current rankings; using defaults.")
+                return {}
+        except Exception as e:
+            st.warning(f"Error fetching rankings: {e}. Using defaults.")
+            return {}
     
     else:  # Historical: Expanded dict for ODIs 1992-2025 (top 10 where available; approximated pre-2002)
     historical = {
@@ -202,7 +209,7 @@ def get_group(animal):
     return members
     return []
 
-def calculate_score(team, year, year_num, year_zod, host=False, form_rank=10, is_underdog=False):
+def calculate_score(team, year_num, year_zod, host=False, form_rank=10, is_underdog=False):
     if team not in teams_data:
     return None
     
@@ -301,17 +308,7 @@ def calculate_score(team, year, year_num, year_zod, host=False, form_rank=10, is
     
     # Underdog boost if selected and karmic year
     if is_underdog and year_num in karmic_years:
-        total_score += 2
-    
-    # New Rule 2: Maturity Cycle Boost
-    years_since_country = year - data["country"]
-    mat_num = get_numerology(years_since_country)
-    if mat_num == 3 and year_num in karmic_years:
-        total_score += 5
-    
-    # New Rule 3: Enhanced Underdog Boost in Matching Zodiac Years
-    if is_underdog and country_zod == year_zod and year_num in karmic_years:
-        total_score += 1  # Additional +1 on top of existing +2, making it +3 total
+    total_score += 2
     
     return total_score
 
